@@ -287,3 +287,106 @@ Learning Layer замикає feedback loop.
 ---
 
 **Цей документ є живим і може доповнюватися, але базові блоки вважаються зафіксованими.**
+
+## Схема файлів репозиторію
+  rag-engine/
+│
+├─ README.md
+├─ ARCHITECTURE.md
+├─ pyproject.toml / requirements.txt
+├─ .gitignore
+│
+├─ config/
+│   ├─ system.yaml
+│   ├─ models.yaml
+│   ├─ thresholds.yaml
+│   └─ paths.yaml
+│
+├─ schemas/
+│   ├─ document.schema.json
+│   ├─ chunk.schema.json
+│   ├─ index.schema.json
+│   ├─ evaluation.schema.json
+│   └─ feedback.schema.json
+│
+├─ core/
+│   │
+│   ├─ cache/
+│   │   ├─ __init__.py
+│   │   ├─ manager.py
+│   │   └─ semantic_cache.py
+│   │
+│   ├─ ingestion/
+│   │   ├─ __init__.py
+│   │   ├─ base_loader.py
+│   │   ├─ pdf_loader.py
+│   │   └─ registry.py
+│   │
+│   ├─ knowledge/
+│   │   ├─ __init__.py
+│   │   ├─ document_store.py
+│   │   ├─ chunk_store.py
+│   │   └─ metadata.py
+│   │
+│   ├─ indexing/
+│   │   ├─ __init__.py
+│   │   ├─ embedder.py
+│   │   ├─ index_manager.py
+│   │   └─ faiss_index.py
+│   │
+│   ├─ retrieval/
+│   │   ├─ __init__.py
+│   │   ├─ retriever.py
+│   │   ├─ query_rewriter.py
+│   │   ├─ reranker.py
+│   │   └─ policies.py
+│   │
+│   ├─ reasoning/
+│   │   ├─ __init__.py
+│   │   ├─ agent.py
+│   │   ├─ context_builder.py
+│   │   └─ strategies.py
+│   │
+│   ├─ generation/
+│   │   ├─ __init__.py
+│   │   ├─ llm_client.py
+│   │   └─ prompts.py
+│   │
+│   ├─ evaluation/
+│   │   ├─ __init__.py
+│   │   ├─ evaluator.py
+│   │   ├─ relevance.py
+│   │   ├─ groundedness.py
+│   │   └─ answerability.py
+│   │
+│   ├─ learning/
+│   │   ├─ __init__.py
+│   │   ├─ feedback_store.py
+│   │   ├─ trainer.py
+│   │   └─ policies_update.py
+│   │
+│   └─ logging/
+│       ├─ __init__.py
+│       ├─ event_logger.py
+│       └─ trace.py
+│
+├─ services/
+│   ├─ rag_service.py
+│   ├─ indexing_service.py
+│   └─ evaluation_service.py
+│
+├─ ui/
+│   ├─ streamlit_app.py
+│   └─ components/
+│
+├─ data/
+│   ├─ documents/
+│   ├─ chunks/
+│   ├─ indexes/
+│   ├─ evaluations/
+│   └─ feedback/
+│
+└─ tests/
+    ├─ test_retrieval.py
+    ├─ test_evaluation.py
+    └─ test_learning.py
