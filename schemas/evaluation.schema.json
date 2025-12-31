@@ -1,3 +1,49 @@
 {
-
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "EvaluationResult",
+  "type": "object",
+  "required": [
+    "evaluation_id",
+    "question",
+    "answer",
+    "metrics",
+    "created_at"
+  ],
+  "properties": {
+    "evaluation_id": {
+      "type": "string"
+    },
+    "question": {
+      "type": "string"
+    },
+    "answer": {
+      "type": "string"
+    },
+    "metrics": {
+      "type": "object",
+      "required": ["relevance", "groundedness"],
+      "properties": {
+        "relevance": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "groundedness": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "answerability": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "additionalProperties": false
 }

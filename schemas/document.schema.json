@@ -1,3 +1,35 @@
 {
-
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Document",
+  "type": "object",
+  "required": ["document_id", "source", "metadata", "created_at"],
+  "properties": {
+    "document_id": {
+      "type": "string",
+      "description": "Унікальний ідентифікатор документа"
+    },
+    "source": {
+      "type": "string",
+      "description": "Шлях або джерело документа (файл, URL тощо)"
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Метадані документа",
+      "properties": {
+        "title": { "type": "string" },
+        "author": { "type": "string" },
+        "language": { "type": "string" },
+        "tags": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": true
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "additionalProperties": false
 }

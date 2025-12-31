@@ -1,10 +1,44 @@
 {
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Chunk",
   "type": "object",
-  "required": ["chunk_id", "source_id", "text"],
+  "required": [
+    "chunk_id",
+    "document_id",
+    "content",
+    "position",
+    "metadata"
+  ],
   "properties": {
-    "chunk_id": { "type": "string" },
-    "source_id": { "type": "string" },
-    "text": { "type": "string" },
-    "metadata": { "type": "object" }
-  }
+    "chunk_id": {
+      "type": "string",
+      "description": "Унікальний ідентифікатор чанка"
+    },
+    "document_id": {
+      "type": "string",
+      "description": "ID документа, з якого походить чанк"
+    },
+    "content": {
+      "type": "string",
+      "description": "Текст чанка"
+    },
+    "position": {
+      "type": "object",
+      "description": "Позиція чанка в документі",
+      "properties": {
+        "start": { "type": "integer" },
+        "end": { "type": "integer" }
+      },
+      "required": ["start", "end"]
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "page": { "type": "integer" },
+        "section": { "type": "string" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false
 }

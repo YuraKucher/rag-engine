@@ -1,24 +1,36 @@
-"""
-Retriever — політика пошуку знань.
-
-Відповідальність:
-- прийняти запит
-- вибрати індекс
-- визначити k
-- застосувати rerank
-- повернути релевантні чанки
-"""
-
 from typing import List, Optional
+
+from core.indexing.index_manager import IndexManager
+from .policies import RetrievalPolicy
+from .query_rewriter import QueryRewriter
 
 
 class Retriever:
-    def retrieve(self, query: str, context: Optional[dict] = None) -> List[dict]:
-        """
-        Retrieve relevant chunks for a given query.
+    """
+    Відповідає за semantic retrieval.
+    """
 
-        :param query: user question
-        :param context: optional conversation or system context
-        :return: list of chunks (dicts following chunk.schema.json)
+    def __init__(
+        self,
+        index_manager: IndexManager,
+        policy: RetrievalPolicy,
+        query_rewriter: Optional[QueryRewriter] = None
+    ):
+        self.index_manager = index_manager
+        self.policy = policy
+        self.query_rewriter = query_rewriter or QueryRewriter()
+
+    def retrieve(self, query: str) -> List[str]:
         """
-        raise NotImplementedError
+        Повертає список chunk_ids
+        """
+
+        if self.policy.use_query_rewrite:
+            query = self.query_rewriter.rewrite(query)
+
+        chunk_ids = self.index_manager.query(
+            query=query,
+            k=self.policy.top_k
+        )
+
+        return chunk_ids
