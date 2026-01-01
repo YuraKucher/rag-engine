@@ -58,7 +58,7 @@ if "rag" not in st.session_state:
         documents_path=str(DOCS_PATH),
         chunks_path=str(CHUNKS_PATH),
         feedback_path=str(FEEDBACK_PATH),
-        embedding_model="nomic-embed-text",
+        embedding_model="sentence-transformers/all-MiniLM-L6-v2",
         llm_model="phi3:latest"
     )
 
