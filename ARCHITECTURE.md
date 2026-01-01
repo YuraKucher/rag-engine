@@ -326,7 +326,9 @@ Learning Layer замикає feedback loop.
 │   │   ├─ __init__.py
 │   │   ├─ document_store.py
 │   │   ├─ chunk_store.py
-│   │   └─ metadata.py
+│   │   ├─ metadata.py
+│   │   └─ chunker.py
+│   │  
 │   │
 │   ├─ indexing/
 │   │   ├─ __init__.py

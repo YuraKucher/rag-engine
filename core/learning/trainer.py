@@ -1,38 +1,44 @@
-from typing import Optional
+import os
+import json
+from typing import List, Dict
 
 
-class Learner:
-    def __init__(self, chunk_store):
-        self.chunk_store = chunk_store
+class Trainer:
+    """
+    Аналізує evaluation + feedback
+    і формує навчальні сигнали.
+    """
 
-    def learn(
-        self,
-        evaluation: dict,
-        chunk_ids: list[str],
-        feedback: Optional[str] = None
-    ):
-        if evaluation["passed"]:
-            self._positive_update(chunk_ids)
-        else:
-            self._negative_update(chunk_ids)
+    def __init__(self, feedback_path: str):
+        self.feedback_path = feedback_path
 
-        if feedback == "dislike":
-            self._user_negative(chunk_ids)
+    def load_records(self) -> List[Dict]:
+        records = []
 
-    def _positive_update(self, chunk_ids):
-        for cid in chunk_ids:
-            stats = self.chunk_store.get(cid)
-            stats.times_used += 1
-            stats.positive_feedback += 1
-            stats.trust_score = min(1.0, stats.trust_score + 0.02)
+        for file in os.listdir(self.feedback_path):
+            if file.endswith(".json"):
+                with open(os.path.join(self.feedback_path, file), "r", encoding="utf-8") as f:
+                    records.append(json.load(f))
 
-    def _negative_update(self, chunk_ids):
-        for cid in chunk_ids:
-            stats = self.chunk_store.get(cid)
-            stats.negative_feedback += 1
-            stats.trust_score = max(0.0, stats.trust_score - 0.05)
+        return records
 
-    def _user_negative(self, chunk_ids):
-        for cid in chunk_ids:
-            stats = self.chunk_store.get(cid)
-            stats.trust_score = max(0.0, stats.trust_score - 0.1)
+    def analyze(self) -> Dict:
+        """
+        Агрегує сигнали.
+        Повертає статистику — НЕ рішення.
+        """
+
+        records = self.load_records()
+        if not records:
+            return {}
+
+        relevance = [r["metrics"]["relevance"] for r in records]
+        groundedness = [r["metrics"]["groundedness"] for r in records]
+        answerability = [r["metrics"]["answerability"] for r in records]
+
+        return {
+            "count": len(records),
+            "avg_relevance": sum(relevance) / len(relevance),
+            "avg_groundedness": sum(groundedness) / len(groundedness),
+            "avg_answerability": sum(answerability) / len(answerability)
+        }

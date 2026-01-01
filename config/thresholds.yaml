@@ -1,0 +1,3 @@
+cache:
+  similarity_threshold: 0.92
+  ttl: 86400

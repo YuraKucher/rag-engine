@@ -1,35 +1,46 @@
-class EvaluationResult(dict):
-    pass
+from typing import Dict, List
+from datetime import datetime
+import uuid
+
+from .relevance import RelevanceEvaluator
+from .groundedness import GroundednessEvaluator
+from .answerability import AnswerabilityEvaluator
 
 
 class Evaluator:
-    def __init__(self, thresholds: dict):
-        self.thresholds = thresholds
+    """
+    Оркестратор evaluation layer.
+
+    ВАЖЛИВО:
+    - строго відповідає evaluation.schema.json
+    - НЕ приймає рішень
+    - НЕ змінює поведінку системи
+    """
+
+    def __init__(self, embedder):
+        self.relevance = RelevanceEvaluator(embedder)
+        self.groundedness = GroundednessEvaluator()
+        self.answerability = AnswerabilityEvaluator()
 
     def evaluate(
         self,
         question: str,
         answer: str,
-        chunks: list[str],
-    ) -> EvaluationResult:
+        chunks: List[Dict]
+    ) -> Dict:
+        """
+        Повертає evaluation result,
+        який ПОВНІСТЮ відповідає evaluation.schema.json
+        """
 
-        relevance = self._relevance(question, answer)
-        groundedness = self._groundedness(answer, chunks)
-        context_rel = self._context_quality(question, chunks)
-
-        passed = (
-            relevance >= self.thresholds["relevance"]
-            and groundedness >= self.thresholds["groundedness"]
-        )
-
-        return EvaluationResult({
-            "relevance": relevance,
-            "groundedness": groundedness,
-            "context_relevance": context_rel,
-            "passed": passed,
-            "warnings": []
-        })
-
-    def _relevance(self, q, a): ...
-    def _groundedness(self, a, c): ...
-    def _context_quality(self, q, c): ...
+        return {
+            "evaluation_id": str(uuid.uuid4()),
+            "question": question,
+            "answer": answer,
+            "metrics": {
+                "relevance": self.relevance.score(question, answer),
+                "groundedness": self.groundedness.score(answer, chunks),
+                "answerability": self.answerability.score(chunks)
+            },
+            "created_at": datetime.utcnow().isoformat()
+        }

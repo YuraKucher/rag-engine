@@ -1,23 +1,38 @@
 import time
+from typing import List
 
 
 class CacheManager:
-    def __init__(self, semantic_cache):
+    """
+    Керує життєвим циклом кешу.
+    """
+
+    def __init__(self, semantic_cache, ttl: int):
         self.cache = semantic_cache
+        self.ttl = ttl
 
-    def invalidate_by_collection(self, collection_name: str):
-        for entry in self.cache.entries.values():
-            if collection_name in entry["collections"]:
-                entry["is_valid"] = False
-                entry["invalid_reason"] = "collection_updated"
+    def cleanup(self) -> None:
+        """
+        Видаляє протерміновані або невалідні записи.
+        """
 
-    def cleanup_expired(self):
         now = time.time()
 
-        for entry in self.cache.entries.values():
-            if entry["ttl"] is None:
-                continue
+        self.cache._entries = [
+            entry for entry in self.cache._entries
+            if entry["valid"] and (now - entry["timestamp"] <= self.ttl)
+        ]
 
-            if now - entry["created_at"] > entry["ttl"]:
-                entry["is_valid"] = False
-                entry["invalid_reason"] = "ttl_expired"
+    def invalidate_all(self) -> None:
+        """
+        Повністю очищає кеш.
+        """
+        self.cache._entries.clear()
+
+    def invalidate_by_query(self, query: str) -> None:
+        """
+        Інвалідовує кеш для конкретного запиту.
+        """
+        for entry in self.cache._entries:
+            if entry["query"] == query:
+                entry["valid"] = False
