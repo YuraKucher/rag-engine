@@ -11,6 +11,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from config import settings
 import streamlit as st
 from pathlib import Path
 
@@ -19,7 +20,6 @@ from pathlib import Path
 # --------------------------------------------------
 
 from services.rag_service import RAGService
-
 
 # --------------------------------------------------
 # STREAMLIT CONFIG
@@ -32,7 +32,6 @@ st.set_page_config(
 
 st.title("🧠 Local RAG Engine")
 st.caption("Engineering UI for testing RAG pipeline")
-
 
 # --------------------------------------------------
 # PATHS & CONFIG
@@ -48,7 +47,6 @@ FEEDBACK_PATH = DATA_PATH / "feedback"
 for p in [DOCS_PATH, CHUNKS_PATH, FEEDBACK_PATH]:
     p.mkdir(parents=True, exist_ok=True)
 
-
 # --------------------------------------------------
 # SESSION STATE
 # --------------------------------------------------
@@ -58,16 +56,14 @@ if "rag" not in st.session_state:
         documents_path=str(DOCS_PATH),
         chunks_path=str(CHUNKS_PATH),
         feedback_path=str(FEEDBACK_PATH),
-        embedding_model="sentence-transformers/all-MiniLM-L6-v2",
-        llm_model="phi3:latest"
+        embedding_model=settings.models["embeddings"]["default"],
+        llm_model=settings.models["llm"]["default"]
     )
 
 if "last_response" not in st.session_state:
     st.session_state.last_response = None
 
-
 rag = st.session_state.rag
-
 
 # --------------------------------------------------
 # SIDEBAR — INGESTION
@@ -94,7 +90,6 @@ if uploaded_file:
         st.sidebar.success("Document indexed")
         st.sidebar.json(result)
 
-
 # --------------------------------------------------
 # MAIN — QA INTERFACE
 # --------------------------------------------------
@@ -120,7 +115,6 @@ if st.button("Ask") and question:
 
     st.markdown("### 📚 Sources")
     st.write(response["sources"])
-
 
 # --------------------------------------------------
 # FEEDBACK LOOP
