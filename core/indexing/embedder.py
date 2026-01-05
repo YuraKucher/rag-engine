@@ -15,11 +15,15 @@ class Embedder:
             model_name=model_name
         )
 
+    @property
+    def embedding_dim(self) -> int:
+        """
+        Розмір embedding-вектора.
+        Публічний контракт для індексів.
+        """
+        return self._embeddings.embedding_size
+
     def embed(self, text: str) -> List[float]:
-        """
-        Канонічний метод для одного тексту.
-        Використовується retrieval / cache / evaluation.
-        """
         return self._embeddings.embed_query(text)
 
     def embed_text(self, text: str) -> List[float]:
@@ -27,3 +31,4 @@ class Embedder:
 
     def embed_texts(self, texts: List[str]) -> List[List[float]]:
         return self._embeddings.embed_documents(texts)
+

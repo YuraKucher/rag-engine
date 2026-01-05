@@ -1,32 +1,31 @@
 import json
 import os
+import uuid
 from datetime import datetime
 from typing import Dict
 
 
-class FeedbackStore:
+class EvaluationStore:
     """
-    Сховище user feedback (👍 / 👎).
+    Сховище evaluation результатів (автоматична оцінка).
     """
 
     def __init__(self, base_path: str):
         self.base_path = base_path
         os.makedirs(self.base_path, exist_ok=True)
 
-    def save(
-        self,
-        evaluation_id: str,
-        rating: int,
-        comment: str = ""
-    ) -> None:
+    def save(self, evaluation: Dict) -> str:
         """
-        Зберігає user feedback для evaluation.
+        Зберігає evaluation і повертає evaluation_id.
         """
+
+        evaluation_id = evaluation.get("evaluation_id") or str(uuid.uuid4())
 
         record = {
             "evaluation_id": evaluation_id,
-            "rating": rating,
-            "comment": comment,
+            "question": evaluation["question"],
+            "answer": evaluation["answer"],
+            "metrics": evaluation["metrics"],
             "created_at": datetime.utcnow().isoformat()
         }
 
@@ -34,3 +33,5 @@ class FeedbackStore:
 
         with open(path, "w", encoding="utf-8") as f:
             json.dump(record, f, ensure_ascii=False, indent=2)
+
+        return evaluation_id

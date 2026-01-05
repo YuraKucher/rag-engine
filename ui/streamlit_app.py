@@ -47,6 +47,10 @@ FEEDBACK_PATH = DATA_PATH / "feedback"
 for p in [DOCS_PATH, CHUNKS_PATH, FEEDBACK_PATH]:
     p.mkdir(parents=True, exist_ok=True)
 
+# ----------- DEBUG MOD ----------------------------
+debug_mode = st.sidebar.checkbox("Debug mode", value=False)
+# --------------------------------------------------
+
 # --------------------------------------------------
 # SESSION STATE
 # --------------------------------------------------
@@ -141,3 +145,11 @@ if st.session_state.last_response:
                 rating=-1
             )
             st.warning("Feedback recorded")
+
+if debug_mode:
+    from ui.debug.evaluation_dashboard import render_evaluation_dashboard
+
+    render_evaluation_dashboard(
+        evaluation_path="data/evaluations",
+        feedback_path="data/feedback"
+    )
