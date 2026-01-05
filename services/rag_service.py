@@ -13,7 +13,7 @@ RAG Service
 from typing import Dict
 
 # Chunking
-from core.chunking.text_chunker import TextChunker
+from core.chunking.chunker import Chunker
 # Evaluation
 from core.evaluation.evaluator import Evaluator
 # Generation
@@ -22,6 +22,7 @@ from core.generation.prompts import PromptFactory
 # Indexing
 from core.indexing.index_manager import IndexManager
 # Ingestion
+
 from core.ingestion.registry import LoaderRegistry
 from core.knowledge.chunk_store import ChunkStore
 # Knowledge
@@ -60,7 +61,7 @@ class RAGService:
         llm_model: str
     ):
         # ---------------- Ingestion / Chunking ----------------
-        self.chunker = TextChunker()
+        self.chunker = Chunker()
 
         # ---------------- Knowledge ----------------
         self.document_store = DocumentStore(documents_path)
@@ -122,7 +123,7 @@ class RAGService:
         self.document_store.save(document)
 
         # 3. Chunking (ОКРЕМИЙ ШАР)
-        chunks = self.chunker.chunk(document)
+        chunks = self.chunker.split(document)
 
         # 4. Save chunks
         for chunk in chunks:

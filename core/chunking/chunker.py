@@ -16,11 +16,6 @@ class Chunker:
         self.overlap = overlap
 
     def split(self, document: Dict) -> List[Dict]:
-        """
-        document: обʼєкт document.schema.json
-        return: список chunk.schema.json
-        """
-
         text = document["content"]
         document_id = document["document_id"]
 
@@ -50,3 +45,13 @@ class Chunker:
             start = end - self.overlap
 
         return chunks
+
+
+# ✅ ОЦЕ ДОДАНО
+def chunk_document(document: Dict, *, chunk_size: int = 500, overlap: int = 50) -> List[Dict]:
+    """
+    Функціональний фасад для chunking.
+    Потрібен для сервісів, щоб не створювати Chunker вручну.
+    """
+    chunker = Chunker(chunk_size=chunk_size, overlap=overlap)
+    return chunker.split(document)

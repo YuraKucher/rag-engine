@@ -297,6 +297,8 @@ Learning Layer замикає feedback loop.
 ├─ .gitignore
 │
 ├─ config/
+│   ├─ __init__.py
+│   ├─ settings.py
 │   ├─ system.yaml
 │   ├─ models.yaml
 │   ├─ thresholds.yaml
@@ -326,9 +328,13 @@ Learning Layer замикає feedback loop.
 │   │   ├─ __init__.py
 │   │   ├─ document_store.py
 │   │   ├─ chunk_store.py
-│   │   ├─ metadata.py
+│   │   └─ metadata.py
+│   │
+│   ├─ chunking/
+│   │   ├─ __init__.py
+│   │   ├─ base_chunker.py
+│   │   ├─ text_chunker.py
 │   │   └─ chunker.py
-│   │  
 │   │
 │   ├─ indexing/
 │   │   ├─ __init__.py
@@ -364,6 +370,7 @@ Learning Layer замикає feedback loop.
 │   ├─ learning/
 │   │   ├─ __init__.py
 │   │   ├─ feedback_store.py
+│   │   ├─ evaluation_store.py
 │   │   ├─ trainer.py
 │   │   └─ policies_update.py
 │   │
@@ -379,7 +386,12 @@ Learning Layer замикає feedback loop.
 │
 ├─ ui/
 │   ├─ streamlit_app.py
-│   └─ components/
+│   ├─ components/
+│   │  ├─ __init__.py
+│   │  ├─ evaluation_dashboard.py
+│   │  ├─ plots.py
+│   │  └─ loaders.py
+│   └─ debug/
 │
 ├─ data/
 │   ├─ documents/

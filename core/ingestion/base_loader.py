@@ -1,17 +1,18 @@
-from abc import ABC, abstractmethod
 from typing import Dict
+from abc import ABC, abstractmethod
+import hashlib
 
 
 class BaseLoader(ABC):
     """
-    Базовий клас для всіх завантажувачів документів.
-    Повертає обʼєкт, узгоджений з document.schema.json
+    Абстрактний базовий loader.
+    Усі loader-и повинні реалізувати load().
     """
 
     @abstractmethod
     def load(self, source: str) -> Dict:
-        """
-        source: шлях до файлу або інше джерело
-        return: Document (dict)
-        """
         pass
+
+
+def compute_document_hash(content: bytes) -> str:
+    return hashlib.sha256(content).hexdigest()

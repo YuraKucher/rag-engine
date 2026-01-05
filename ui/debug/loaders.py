@@ -23,7 +23,11 @@ def load_evaluations(path: str) -> pd.DataFrame:
                 records.append(record)
 
     df = pd.DataFrame(records)
-    df["created_at"] = pd.to_datetime(df["created_at"])
+    if "created_at" not in df.columns:
+        df["created_at"] = pd.NaT
+    else:
+        df["created_at"] = pd.to_datetime(df["created_at"])
+
     return df
 
 
