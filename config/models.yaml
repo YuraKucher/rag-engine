@@ -2,4 +2,4 @@ embeddings:
   default: sentence-transformers/all-MiniLM-L6-v2
 
 llm:
-  default: phi3:mini
+  default: phi3:latest

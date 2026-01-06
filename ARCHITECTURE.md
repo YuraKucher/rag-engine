@@ -382,18 +382,21 @@ Learning Layer замикає feedback loop.
 ├─ services/
 │   ├─ rag_service.py
 │   ├─ indexing_service.py
+│   ├─ ingestion_service.py
 │   └─ evaluation_service.py
 │
 ├─ ui/
 │   ├─ streamlit_app.py
 │   ├─ components/
-│   │  ├─ __init__.py
-│   │  ├─ evaluation_dashboard.py
-│   │  ├─ plots.py
-│   │  └─ loaders.py
 │   └─ debug/
+│       ├─ __init__.py
+│       ├─ evaluation_dashboard.py
+│       ├─ plots.py
+│       └─ loaders.py
 │
 ├─ data/
+│   ├─ state/
+│   │  └─ ingestion_registry.json
 │   ├─ documents/
 │   ├─ chunks/
 │   ├─ indexes/

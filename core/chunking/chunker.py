@@ -15,13 +15,15 @@ class Chunker:
         self.chunk_size = chunk_size
         self.overlap = overlap
 
-    def split(self, document: Dict) -> List[Dict]:
+    def split(self, document: Dict, progress=None) -> List[Dict]:
         text = document["content"]
         document_id = document["document_id"]
 
         chunks = []
         start = 0
         index = 0
+
+        approx_total = max(1, len(text) // self.chunk_size)
 
         while start < len(text):
             end = start + self.chunk_size
@@ -41,8 +43,12 @@ class Chunker:
             }
 
             chunks.append(chunk)
+
             index += 1
             start = end - self.overlap
+
+            if progress:
+                progress.step()
 
         return chunks
 
