@@ -2,7 +2,8 @@ from typing import Dict
 from datetime import datetime
 import uuid
 
-from langchain.document_loaders import PyPDFLoader
+from langchain_community.document_loaders import PyPDFLoader
+
 
 from .base_loader import BaseLoader
 
