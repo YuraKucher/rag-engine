@@ -1,5 +1,5 @@
-from langchain.llms.base import LLM
-from langchain.llms import Ollama
+from langchain_core.language_models.llms import LLM
+from langchain_community.llms import Ollama
 
 
 class LLMClient:
