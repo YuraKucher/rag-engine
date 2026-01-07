@@ -10,21 +10,21 @@ class Embedder:
             model_kwargs={"device": "cpu"}
         )
 
-    def embed_texts(self, texts: List[str]):
+    def embed_batch(self, texts: List[str]):
         """
-        Batch embedding для індексації.
+        Batch embedding (індексація, cache warmup).
         """
         return self._embeddings.embed_documents(texts)
 
     def embed(self, text: str):
         """
-        Single embedding (query, evaluation).
+        Single embedding (query, evaluation, cache).
         """
         return self._embeddings.embed_query(text)
 
-    def embed_text(self, text: str):
-        """
-        Alias для query embedding (очікується IndexManager).
-        """
-        return self.embed(text)
+    # --- Backward compatibility ---
+    def embed_texts(self, texts: List[str]):
+        return self.embed_batch(texts)
 
+    def embed_text(self, text: str):
+        return self.embed(text)
