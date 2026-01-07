@@ -10,6 +10,10 @@ RAG Service
 - лише оркестрація шарів
 """
 
+
+# ======================================================
+# IMPORTS
+# ======================================================
 from typing import Dict
 
 # Chunking
@@ -22,7 +26,6 @@ from core.generation.prompts import PromptFactory
 # Indexing
 from core.indexing.index_manager import IndexManager
 # Ingestion
-
 from core.ingestion.registry import LoaderRegistry
 from core.knowledge.chunk_store import ChunkStore
 # Knowledge
@@ -36,12 +39,9 @@ from core.retrieval.policies import RetrievalPolicy
 from core.retrieval.reranker import Reranker
 # Retrieval
 from core.retrieval.retriever import Retriever
-
-
-# ======================================================
-# IMPORTS
-# ======================================================
-
+# Cache
+from core.cache.semantic_cache import SemanticCache
+from core.cache.manager import CacheManager
 
 # ======================================================
 # RAG SERVICE
@@ -62,51 +62,50 @@ class RAGService:
     ):
         # ---------------- Ingestion / Chunking ----------------
         self.chunker = Chunker()
-
         # ---------------- Knowledge ----------------
         self.document_store = DocumentStore(documents_path)
         self.chunk_store = ChunkStore(chunks_path)
-
         # ---------------- Indexing ----------------
         indexes_path = chunks_path.replace("chunks", "indexes")
-
         self.index_manager = IndexManager(
             embedding_model=embedding_model,
             indexes_path=indexes_path
         )
-
         # ---------------- Retrieval ----------------
         self.retrieval_policy = RetrievalPolicy(
             top_k=5,
             rerank_k=3,
             use_query_rewrite=False
         )
-
         self.retriever = Retriever(
             index_manager=self.index_manager,
             policy=self.retrieval_policy
         )
-
         self.reranker = Reranker()
-
         # ---------------- Reasoning ----------------
         self.reasoning_agent = ReasoningAgent(
             strategy=ReasoningStrategy.QA
         )
-
         # ---------------- Generation ----------------
         self.llm_client = LLMClient(
             model_name=llm_model
         )
-
         # ---------------- Evaluation ----------------
         self.evaluator = Evaluator(
             embedder=self.index_manager.embedder
         )
-
         # ---------------- Learning / Feedback ----------------
         self.feedback_store = FeedbackStore(
             base_path=feedback_path
+        )
+        # ---------------- Cache ----------------
+        self.semantic_cache = SemanticCache(
+            embedder=self.index_manager.embedder,
+            similarity_threshold=0.9
+        )
+        self.cache_manager = CacheManager(
+            semantic_cache=self.semantic_cache,
+            ttl=60 * 60  # 1 година, можна міняти
         )
 
     # ======================================================
@@ -149,10 +148,13 @@ class RAGService:
         """
         Повний RAG pipeline + evaluation + feedback hook.
         """
+        # 0. Semantic cache lookup
+        cached = self.semantic_cache.lookup(question)
+        if cached is not None:
+            return cached
 
         # 1. Retrieval
         chunk_ids = self.retriever.retrieve(question)
-
         chunks = [
             self.chunk_store.load(chunk_id)
             for chunk_id in chunk_ids
@@ -184,16 +186,22 @@ class RAGService:
             chunks=ranked_chunks
         )
 
-        # 7. Save feedback shell (без 👍/👎)
+        # 7. Save feedback shell
         feedback_id = self.feedback_store.save(evaluation)
 
-        return {
+        result = {
             "question": question,
             "answer": answer,
             "evaluation": evaluation,
             "sources": reasoning_payload["sources"],
             "feedback_id": feedback_id
         }
+
+        # 8. Store in semantic cache
+
+        self.semantic_cache.store(question, result)
+
+        return result
 
     # ======================================================
     # FEEDBACK LOOP (UI calls this)
