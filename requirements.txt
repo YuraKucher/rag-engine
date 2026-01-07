@@ -1,31 +1,54 @@
+# =========================
 # Core
+# =========================
 numpy
 pandas
+scipy
 
-# RAG / LLM
+# =========================
+# RAG / LangChain
+# =========================
 langchain
 langchain-core
 langchain-community
 
-# Embeddings & vector stores
+# =========================
+# PDF ingestion
+# =========================
+pypdf
+
+# =========================
+# Embeddings & Vector Stores
+# =========================
+torch
+transformers
 sentence-transformers
+scikit-learn
 faiss-cpu
 chromadb
 
+# =========================
 # Text processing
+# =========================
 nltk
 tiktoken
 regex
 
+# =========================
 # Configs & validation
+# =========================
 pyyaml
 python-dotenv
 jsonschema
 
-# Utils
+# =========================
+# Utils / Logging / Progress
+# =========================
 tqdm
 loguru
 rich
 
-# UI (поки не використовуємо, але залежність є)
+# =========================
+# UI (частина проєкту, навіть якщо зараз не використовуємо)
+# =========================
 streamlit
