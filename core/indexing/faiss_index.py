@@ -1,4 +1,5 @@
 from typing import List, Tuple
+from pathlib import Path
 import faiss
 import numpy as np
 
@@ -26,3 +27,16 @@ class FaissIndex:
 
     def size(self) -> int:
         return self.index.ntotal
+
+    # --- NEW ---
+    def save(self, path: str) -> None:
+        path = Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        faiss.write_index(self.index, str(path))
+
+    @classmethod
+    def load(cls, path: str) -> "FaissIndex":
+        index = faiss.read_index(str(path))
+        obj = cls(index.d)
+        obj.index = index
+        return obj

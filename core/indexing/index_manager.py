@@ -1,7 +1,7 @@
-from typing import List, Dict
+from typing import List, Dict, Optional
 from datetime import datetime
 import uuid
-
+from pathlib import Path
 from .embedder import Embedder
 from .faiss_index import FaissIndex
 
@@ -12,17 +12,16 @@ class IndexManager:
     Узгоджений з index.schema.json
     """
 
-    def __init__(self, embedding_model: str):
+    def __init__(self, embedding_model: str, indexes_path: str):
         self.embedder = Embedder(embedding_model)
         self.embedding_model = embedding_model
-        self.faiss_index = None
+        self.indexes_path = Path(indexes_path)
+
+        self.faiss_index: Optional[FaissIndex] = None
         self.chunk_ids: List[str] = []
+        self.index_id: Optional[str] = None
 
     def build_index(self, chunks: List[Dict]) -> Dict:
-        """
-        chunks: список обʼєктів, що відповідають chunk.schema.json
-        """
-
         texts = [chunk["content"] for chunk in chunks]
         self.chunk_ids = [chunk["chunk_id"] for chunk in chunks]
 
@@ -32,15 +31,20 @@ class IndexManager:
         self.faiss_index = FaissIndex(dimension)
         self.faiss_index.add(embeddings)
 
-        index_metadata = {
-            "index_id": str(uuid.uuid4()),
+        self.index_id = str(uuid.uuid4())
+        index_path = self.indexes_path / f"{self.index_id}.faiss"
+
+        # КЛЮЧОВИЙ РЯДОК
+        self.faiss_index.save(index_path)
+
+        return {
+            "index_id": self.index_id,
             "index_type": "faiss",
             "embedding_model": self.embedding_model,
             "chunk_ids": self.chunk_ids,
+            "index_path": str(index_path),
             "created_at": datetime.utcnow().isoformat()
         }
-
-        return index_metadata
 
     def query(self, query: str, k: int) -> List[str]:
         """

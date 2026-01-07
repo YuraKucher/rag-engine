@@ -68,8 +68,11 @@ class RAGService:
         self.chunk_store = ChunkStore(chunks_path)
 
         # ---------------- Indexing ----------------
+        indexes_path = chunks_path.replace("chunks", "indexes")
+
         self.index_manager = IndexManager(
-            embedding_model=embedding_model
+            embedding_model=embedding_model,
+            indexes_path=indexes_path
         )
 
         # ---------------- Retrieval ----------------
