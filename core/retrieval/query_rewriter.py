@@ -5,6 +5,7 @@ class QueryRewriter:
     """
 
     def rewrite(self, query: str) -> str:
-        # Базова реалізація — без змін
-        # Розширення можливе пізніше
-        return query
+        """
+        Явна точка розширення.
+        """
+        return query.strip()

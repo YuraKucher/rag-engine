@@ -84,7 +84,9 @@ class RAGService:
             index_manager=self.index_manager,
             policy=self.retrieval_policy
         )
-        self.reranker = Reranker()
+        self.reranker = Reranker(
+            embedder=self.index_manager.embedder
+        )
 
         # ---------------- Reasoning ----------------
         self.reasoning_agent = ReasoningAgent(

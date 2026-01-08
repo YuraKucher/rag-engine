@@ -7,13 +7,14 @@ from .strategies import ReasoningStrategy
 class ReasoningAgent:
     """
     Агент reasoning.
-    Готує вхідні дані для generation layer.
+    Готує структурований payload для generation layer.
     """
 
     def __init__(
         self,
         strategy: ReasoningStrategy = ReasoningStrategy.SIMPLE
     ):
+        self.strategy = strategy
         self.context_builder = ContextBuilder(strategy)
 
     def prepare(
@@ -22,13 +23,22 @@ class ReasoningAgent:
         chunks: List[Dict]
     ) -> Dict:
         """
-        Повертає структуру для LLM generation.
+        Повертає reasoning payload з явним контрактом.
         """
 
         context = self.context_builder.build(chunks)
 
+        sources = [
+            {
+                "chunk_id": chunk["chunk_id"],
+                "document_id": chunk["document_id"]
+            }
+            for chunk in chunks
+        ]
+
         return {
             "question": question,
             "context": context,
-            "sources": [chunk["chunk_id"] for chunk in chunks]
+            "sources": sources,
+            "strategy": self.strategy.value
         }

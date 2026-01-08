@@ -8,6 +8,9 @@ from .query_rewriter import QueryRewriter
 class Retriever:
     """
     Відповідає за semantic retrieval.
+
+    Повертає ідентифікатори чанків,
+    але також знає, ЯК саме був виконаний retrieval.
     """
 
     def __init__(
@@ -22,15 +25,15 @@ class Retriever:
 
     def retrieve(self, query: str) -> List[str]:
         """
-        Повертає список chunk_ids
+        Повертає список chunk_ids.
         """
 
-        if self.policy.use_query_rewrite:
-            query = self.query_rewriter.rewrite(query)
+        effective_query = query
 
-        chunk_ids = self.index_manager.query(
-            query=query,
+        if self.policy.use_query_rewrite:
+            effective_query = self.query_rewriter.rewrite(query)
+
+        return self.index_manager.query(
+            query=effective_query,
             k=self.policy.top_k
         )
-
-        return chunk_ids
