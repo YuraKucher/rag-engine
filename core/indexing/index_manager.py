@@ -121,3 +121,10 @@ class IndexManager:
             for i in indices
             if i < len(self.chunk_ids)
         ]
+
+    # ---- буде реалізовано потім -------
+    def list_indexes(self) -> List[str]:
+        return [
+            p.stem.replace(".index", "")
+            for p in self.indexes_path.glob("*.index.json")
+        ]

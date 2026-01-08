@@ -1,8 +1,7 @@
 import os
 import json
 from datetime import datetime
-from typing import Dict, Optional
-from typing import Dict, Type
+from typing import Dict, Type, Optional
 from .base_loader import BaseLoader
 from .pdf_loader import PDFLoader
 

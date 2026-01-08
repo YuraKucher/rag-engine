@@ -10,12 +10,14 @@ RAG Service
 - лише оркестрація шарів
 """
 
-
 # ======================================================
 # IMPORTS
 # ======================================================
 from typing import Dict
 
+from core.cache.manager import CacheManager
+# Cache
+from core.cache.semantic_cache import SemanticCache
 # Chunking
 from core.chunking.chunker import Chunker
 # Evaluation
@@ -27,21 +29,19 @@ from core.generation.prompts import PromptFactory
 from core.indexing.index_manager import IndexManager
 # Ingestion
 from core.ingestion.registry import LoaderRegistry
-from core.knowledge.chunk_store import ChunkStore
 # Knowledge
+from core.knowledge.chunk_store import ChunkStore
 from core.knowledge.document_store import DocumentStore
 # Learning / Feedback
 from core.learning.feedback_store import FeedbackStore
 # Reasoning
 from core.reasoning.agent import ReasoningAgent
 from core.reasoning.strategies import ReasoningStrategy
+# Retrieval
 from core.retrieval.policies import RetrievalPolicy
 from core.retrieval.reranker import Reranker
-# Retrieval
 from core.retrieval.retriever import Retriever
-# Cache
-from core.cache.semantic_cache import SemanticCache
-from core.cache.manager import CacheManager
+
 
 # ======================================================
 # RAG SERVICE
@@ -62,15 +62,18 @@ class RAGService:
     ):
         # ---------------- Ingestion / Chunking ----------------
         self.chunker = Chunker()
+
         # ---------------- Knowledge ----------------
         self.document_store = DocumentStore(documents_path)
         self.chunk_store = ChunkStore(chunks_path)
+
         # ---------------- Indexing ----------------
         indexes_path = chunks_path.replace("chunks", "indexes")
         self.index_manager = IndexManager(
             embedding_model=embedding_model,
             indexes_path=indexes_path
         )
+
         # ---------------- Retrieval ----------------
         self.retrieval_policy = RetrievalPolicy(
             top_k=5,
@@ -82,22 +85,27 @@ class RAGService:
             policy=self.retrieval_policy
         )
         self.reranker = Reranker()
+
         # ---------------- Reasoning ----------------
         self.reasoning_agent = ReasoningAgent(
             strategy=ReasoningStrategy.QA
         )
+
         # ---------------- Generation ----------------
         self.llm_client = LLMClient(
             model_name=llm_model
         )
+
         # ---------------- Evaluation ----------------
         self.evaluator = Evaluator(
             embedder=self.index_manager.embedder
         )
+
         # ---------------- Learning / Feedback ----------------
         self.feedback_store = FeedbackStore(
             base_path=feedback_path
         )
+
         # ---------------- Cache ----------------
         self.semantic_cache = SemanticCache(
             embedder=self.index_manager.embedder,
@@ -105,8 +113,40 @@ class RAGService:
         )
         self.cache_manager = CacheManager(
             semantic_cache=self.semantic_cache,
-            ttl=60 * 60  # 1 година, можна міняти
+            ttl=60 * 60
         )
+
+        # ---------------- Index restore ----------------
+        self._restore_index()
+
+    # ======================================================
+    # INDEX RESTORE
+    # ======================================================
+
+    def _restore_index(self) -> None:
+        """
+        Відновлює FAISS-індекс з диску через IndexManager metadata.
+        НІЯКОЇ індексації, тільки load.
+        """
+
+        # знаходимо всі metadata-файли індексів
+        metadata_files = list(
+            self.index_manager.indexes_path.glob("*.index.json")
+        )
+
+        if not metadata_files:
+            return
+
+        # просте правило: беремо останній створений індекс
+        metadata_files.sort(
+            key=lambda p: p.stat().st_mtime
+        )
+        latest_metadata = metadata_files[-1]
+
+        index_id = latest_metadata.stem.replace(".index", "")
+
+        # delegate everything to IndexManager
+        self.index_manager.load_index(index_id)
 
     # ======================================================
     # INGESTION PIPELINE
@@ -124,15 +164,18 @@ class RAGService:
         # 2. Save document
         self.document_store.save(document)
 
-        # 3. Chunking (ОКРЕМИЙ ШАР)
+        # 3. Chunking
         chunks = self.chunker.split(document)
 
-        # 4. Save chunks
-        for chunk in chunks:
-            self.chunk_store.save(chunk)
-
-        # 5. Build index
+        # 4. Build index
         index_metadata = self.index_manager.build_index(chunks)
+
+        # 5. Save chunks WITH index binding
+        for chunk in chunks:
+            chunk.setdefault("metadata", {})
+            chunk["metadata"]["index_id"] = index_metadata["index_id"]
+            chunk["metadata"]["embedding_model"] = index_metadata["embedding_model"]
+            self.chunk_store.save(chunk)
 
         return {
             "document_id": document["document_id"],
@@ -146,8 +189,9 @@ class RAGService:
 
     def ask(self, question: str) -> Dict:
         """
-        Повний RAG pipeline + evaluation + feedback hook.
+        Повний RAG pipeline + evaluation.
         """
+
         # 0. Semantic cache lookup
         cached = self.semantic_cache.lookup(question)
         if cached is not None:
@@ -158,6 +202,7 @@ class RAGService:
         chunks = [
             self.chunk_store.load(chunk_id)
             for chunk_id in chunk_ids
+            if self.chunk_store.load(chunk_id) is not None
         ]
 
         # 2. Reranking
@@ -183,10 +228,11 @@ class RAGService:
         evaluation = self.evaluator.evaluate(
             question=question,
             answer=answer,
-            chunks=ranked_chunks
+            chunks=ranked_chunks,
+            index_id=self.index_manager.index_id
         )
 
-        # 7. Save feedback shell
+        # 7. Save evaluation shell
         feedback_id = self.feedback_store.save(evaluation)
 
         result = {
@@ -198,13 +244,12 @@ class RAGService:
         }
 
         # 8. Store in semantic cache
-
         self.semantic_cache.store(question, result)
 
         return result
 
     # ======================================================
-    # FEEDBACK LOOP (UI calls this)
+    # FEEDBACK LOOP
     # ======================================================
 
     def submit_feedback(
