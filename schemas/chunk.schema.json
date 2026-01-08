@@ -7,7 +7,7 @@
     "document_id",
     "content",
     "position",
-    "metadata"
+    "created_at"
   ],
   "properties": {
     "chunk_id": {
@@ -25,19 +25,41 @@
     "position": {
       "type": "object",
       "description": "Позиція чанка в документі",
+      "required": ["start", "end"],
       "properties": {
-        "start": { "type": "integer" },
-        "end": { "type": "integer" }
-      },
-      "required": ["start", "end"]
+        "start": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "end": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "embedding_id": {
+      "type": "string",
+      "description": "ID embedding-вектора для чанка",
+      "nullable": true
+    },
+    "content_hash": {
+      "type": "string",
+      "description": "Хеш контенту чанка для дедуплікації",
+      "nullable": true
     },
     "metadata": {
       "type": "object",
+      "description": "Довільні метадані чанка",
       "properties": {
         "page": { "type": "integer" },
         "section": { "type": "string" }
       },
       "additionalProperties": true
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Час створення чанка"
     }
   },
   "additionalProperties": false

@@ -6,7 +6,9 @@
     "index_id",
     "index_type",
     "embedding_model",
+    "index_path",
     "chunk_ids",
+    "document_ids",
     "created_at"
   ],
   "properties": {
@@ -16,20 +18,30 @@
     },
     "index_type": {
       "type": "string",
-      "description": "Тип індексу (faiss, інш.)"
+      "description": "Тип індексу (faiss, інший)"
     },
     "embedding_model": {
       "type": "string",
       "description": "Назва embedding-моделі"
     },
+    "index_path": {
+      "type": "string",
+      "description": "Фізичний шлях до файлу індексу (FAISS)"
+    },
     "chunk_ids": {
       "type": "array",
       "items": { "type": "string" },
-      "description": "Список ID чанків в індексі"
+      "description": "Список ID чанків, що входять до індексу"
+    },
+    "document_ids": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Список ID документів, представлених в індексі"
     },
     "created_at": {
       "type": "string",
-      "format": "date-time"
+      "format": "date-time",
+      "description": "Час створення індексу"
     }
   },
   "additionalProperties": false

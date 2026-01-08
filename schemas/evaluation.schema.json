@@ -6,18 +6,32 @@
     "evaluation_id",
     "question",
     "answer",
+    "index_id",
+    "chunk_ids",
     "metrics",
     "created_at"
   ],
   "properties": {
     "evaluation_id": {
-      "type": "string"
+      "type": "string",
+      "description": "Унікальний ідентифікатор оцінки"
     },
     "question": {
-      "type": "string"
+      "type": "string",
+      "description": "Користувацьке питання"
     },
     "answer": {
-      "type": "string"
+      "type": "string",
+      "description": "Згенерована відповідь"
+    },
+    "index_id": {
+      "type": "string",
+      "description": "ID індексу, використаного для retrieval"
+    },
+    "chunk_ids": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "ID чанків, що були використані для відповіді"
     },
     "metrics": {
       "type": "object",
@@ -38,11 +52,13 @@
           "minimum": 0,
           "maximum": 1
         }
-      }
+      },
+      "additionalProperties": false
     },
     "created_at": {
       "type": "string",
-      "format": "date-time"
+      "format": "date-time",
+      "description": "Час проведення оцінки"
     }
   },
   "additionalProperties": false

@@ -4,20 +4,18 @@
   "type": "object",
   "required": [
     "feedback_id",
-    "question",
-    "answer",
+    "evaluation_id",
     "rating",
     "created_at"
   ],
   "properties": {
     "feedback_id": {
-      "type": "string"
+      "type": "string",
+      "description": "Унікальний ідентифікатор фідбеку"
     },
-    "question": {
-      "type": "string"
-    },
-    "answer": {
-      "type": "string"
+    "evaluation_id": {
+      "type": "string",
+      "description": "ID evaluation, до якого відноситься фідбек"
     },
     "rating": {
       "type": "integer",
@@ -26,11 +24,13 @@
       "maximum": 1
     },
     "comment": {
-      "type": "string"
+      "type": "string",
+      "description": "Додатковий коментар користувача"
     },
     "created_at": {
       "type": "string",
-      "format": "date-time"
+      "format": "date-time",
+      "description": "Час створення фідбеку"
     }
   },
   "additionalProperties": false

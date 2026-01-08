@@ -1,6 +1,7 @@
 from typing import List, Dict, Optional
 from datetime import datetime
 import uuid
+import json
 from pathlib import Path
 
 from .embedder import Embedder
@@ -13,8 +14,8 @@ class IndexManager:
 
     Відповідальність:
     - build index
-    - save index
-    - load index (явно)
+    - save index + metadata
+    - load index (з metadata)
     - query index
 
     НЕ:
@@ -32,8 +33,11 @@ class IndexManager:
 
         self.faiss_index: Optional[FaissIndex] = None
         self.chunk_ids: List[str] = []
+        self.document_ids: List[str] = []
+
         self.index_id: Optional[str] = None
         self.index_path: Optional[Path] = None
+        self.metadata_path: Optional[Path] = None
 
     # ------------------------------------------------------------------
     # BUILD + SAVE
@@ -42,6 +46,9 @@ class IndexManager:
     def build_index(self, chunks: List[Dict]) -> Dict:
         texts = [chunk["content"] for chunk in chunks]
         self.chunk_ids = [chunk["chunk_id"] for chunk in chunks]
+        self.document_ids = sorted(
+            {chunk["document_id"] for chunk in chunks}
+        )
 
         embeddings = self.embedder.embed_texts(texts)
         dimension = len(embeddings[0])
@@ -51,36 +58,49 @@ class IndexManager:
 
         self.index_id = str(uuid.uuid4())
         self.index_path = self.indexes_path / f"{self.index_id}.faiss"
+        self.metadata_path = self.indexes_path / f"{self.index_id}.index.json"
 
         self.faiss_index.save(str(self.index_path))
 
-        return {
+        metadata = {
             "index_id": self.index_id,
             "index_type": "faiss",
             "embedding_model": self.embedding_model,
-            "chunk_ids": self.chunk_ids,
             "index_path": str(self.index_path),
+            "chunk_ids": self.chunk_ids,
+            "document_ids": self.document_ids,
             "created_at": datetime.utcnow().isoformat()
         }
 
+        with open(self.metadata_path, "w", encoding="utf-8") as f:
+            json.dump(metadata, f, ensure_ascii=False, indent=2)
+
+        return metadata
+
     # ------------------------------------------------------------------
-    # LOAD (ЯВНО)
+    # LOAD (З METADATA)
     # ------------------------------------------------------------------
 
-    def load_index(self, index_path: str, chunk_ids: List[str]) -> None:
-        """
-        Явно завантажує індекс.
-        Викликається orchestration-шаром.
-        """
+    def load_index(self, index_id: str) -> None:
+        faiss_path = self.indexes_path / f"{index_id}.faiss"
+        metadata_path = self.indexes_path / f"{index_id}.index.json"
 
-        path = Path(index_path)
-        if not path.exists():
-            raise FileNotFoundError(f"Index not found: {path}")
+        if not faiss_path.exists():
+            raise FileNotFoundError(f"FAISS index not found: {faiss_path}")
 
-        self.faiss_index = FaissIndex.load(str(path))
-        self.chunk_ids = chunk_ids
-        self.index_id = path.stem
-        self.index_path = path
+        if not metadata_path.exists():
+            raise FileNotFoundError(f"Index metadata not found: {metadata_path}")
+
+        with open(metadata_path, "r", encoding="utf-8") as f:
+            metadata = json.load(f)
+
+        self.faiss_index = FaissIndex.load(str(faiss_path))
+        self.chunk_ids = metadata["chunk_ids"]
+        self.document_ids = metadata["document_ids"]
+
+        self.index_id = metadata["index_id"]
+        self.index_path = faiss_path
+        self.metadata_path = metadata_path
 
     # ------------------------------------------------------------------
     # QUERY
