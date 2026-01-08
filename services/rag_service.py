@@ -95,7 +95,8 @@ class RAGService:
 
         # ---------------- Generation ----------------
         self.llm_client = LLMClient(
-            model_name=llm_model
+            model_name=llm_model,
+            backend="hf"
         )
 
         # ---------------- Evaluation ----------------
