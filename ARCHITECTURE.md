@@ -396,6 +396,8 @@ Learning Layer замикає feedback loop.
 │
 ├─ data/
 │   ├─ state/
+│   │  ├─ chunk_state.json
+│   │  ├─ document_state.json
 │   │  └─ ingestion_registry.json
 │   ├─ documents/
 │   ├─ chunks/
