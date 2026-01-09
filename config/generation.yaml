@@ -1,0 +1,4 @@
+generation:
+  max_context_chars: 2000
+  max_chunks: 3
+  truncate_strategy: tail

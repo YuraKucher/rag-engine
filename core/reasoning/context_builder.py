@@ -1,49 +1,49 @@
 from typing import List, Dict
 from .strategies import ReasoningStrategy
+from config.settings import settings
 
 
 class ContextBuilder:
     """
     Формує текстовий контекст для LLM
-    на основі чанків і стратегії reasoning.
+    з урахуванням системних обмежень.
     """
 
     def __init__(self, strategy: ReasoningStrategy = ReasoningStrategy.SIMPLE):
         self.strategy = strategy
 
+        # system-level constraints
+        self.max_chars: int = settings.system.get(
+            "max_context_chars", 4000
+        )
+
     def build(self, chunks: List[Dict]) -> str:
         """
-        chunks: список обʼєктів chunk.schema.json
-        return: context string
+        chunks: список chunk.schema.json
+        return: context string (truncated)
         """
 
         if not chunks:
             return ""
 
         if self.strategy == ReasoningStrategy.SIMPLE:
-            return self._simple_context(chunks)
+            context = self._simple_context(chunks)
 
-        if self.strategy == ReasoningStrategy.QA:
-            return self._qa_context(chunks)
+        elif self.strategy == ReasoningStrategy.QA:
+            context = self._qa_context(chunks)
 
-        raise ValueError(f"Unsupported strategy: {self.strategy}")
+        else:
+            raise ValueError(f"Unsupported strategy: {self.strategy}")
+
+        return self._truncate(context)
 
     # ------------------------------------------------------------------
 
     def _simple_context(self, chunks: List[Dict]) -> str:
-        """
-        Простий контекст без форматування.
-        Зберігає порядок чанків.
-        """
         return "\n\n".join(chunk["content"] for chunk in chunks)
 
     def _qa_context(self, chunks: List[Dict]) -> str:
-        """
-        Контекст з явними джерелами.
-        Корисно для grounded QA.
-        """
-
-        context_parts = []
+        parts = []
 
         for i, chunk in enumerate(chunks, start=1):
             header = (
@@ -51,9 +51,18 @@ class ContextBuilder:
                 f"(doc: {chunk['document_id']}, "
                 f"chunk: {chunk['chunk_id']})"
             )
+            parts.append(f"{header}\n{chunk['content']}")
 
-            context_parts.append(
-                f"{header}\n{chunk['content']}"
-            )
+        return "\n\n".join(parts)
 
-        return "\n\n".join(context_parts)
+    # ------------------------------------------------------------------
+
+    def _truncate(self, text: str) -> str:
+        """
+        Жорстке обрізання контексту
+        для уникнення token overflow.
+        """
+        if len(text) <= self.max_chars:
+            return text
+
+        return text[: self.max_chars].rstrip() + "\n\n[Context truncated]"

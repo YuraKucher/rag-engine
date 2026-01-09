@@ -1,0 +1,4 @@
+system:
+  environment: colab        # local | colab | prod
+  max_context_chars: 4000   # жорсткий ліміт контексту
+  debug: true

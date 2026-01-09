@@ -1,0 +1,7 @@
+paths:
+  documents: data/documents
+  chunks: data/chunks
+  indexes: data/indexes
+  evaluations: data/evaluations
+  feedback: data/feedback
+  logs: data/logs
