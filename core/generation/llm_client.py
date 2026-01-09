@@ -32,7 +32,8 @@ class LLMClient:
                 num_predict=max_tokens
             )
 
-        # ---------------- HUGGINGFACE (COLAB) ----------------
+        # ----------------
+        # HUGGINGFACE (COLAB) ----------------
         elif backend == "hf":
             # FLAN-T5 → text2text-generation, NOT text-generation
             hf_pipeline = pipeline(
