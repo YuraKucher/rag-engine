@@ -9,8 +9,15 @@ class Retriever:
     """
     Відповідає за semantic retrieval.
 
-    Повертає ідентифікатори чанків,
-    але також знає, ЯК саме був виконаний retrieval.
+    Відповідальність:
+    - підготувати query (rewrite / normalize)
+    - викликати index_manager
+    - повернути candidate chunk_ids (recall stage)
+
+    НЕ:
+    - не ранжує
+    - не фільтрує
+    - не знає про чанки як обʼєкти
     """
 
     def __init__(
@@ -23,17 +30,34 @@ class Retriever:
         self.policy = policy
         self.query_rewriter = query_rewriter or QueryRewriter()
 
+    # ======================================================
+    # PUBLIC API
+    # ======================================================
+
     def retrieve(self, query: str) -> List[str]:
         """
-        Повертає список chunk_ids.
+        Повертає список chunk_ids (recall stage).
         """
 
-        effective_query = query
-
-        if self.policy.use_query_rewrite:
-            effective_query = self.query_rewriter.rewrite(query)
+        effective_query = self._prepare_query(query)
 
         return self.index_manager.query(
             query=effective_query,
             k=self.policy.top_k
         )
+
+    # ======================================================
+    # INTERNALS
+    # ======================================================
+
+    def _prepare_query(self, query: str) -> str:
+        """
+        Готує запит до retrieval:
+        - rewrite (опційно)
+        - normalization (на майбутнє)
+        """
+
+        if self.policy.use_query_rewrite:
+            return self.query_rewriter.rewrite(query)
+
+        return query

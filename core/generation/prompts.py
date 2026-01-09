@@ -13,7 +13,8 @@ class PromptFactory:
         {
             "question": str,
             "context": str,
-            "sources": List[Dict]
+            "sources": List[{chunk_id, document_id}],
+            "strategy": str
         }
         """
 
@@ -21,10 +22,13 @@ class PromptFactory:
         context: str = payload["context"]
         sources: List[Dict] = payload.get("sources", [])
 
-        sources_block = "\n".join(
-            f"- {s.get('chunk_id', 'unknown')} (doc: {s.get('document_id', 'unknown')})"
-            for s in sources
-        )
+        if sources:
+            sources_block = "\n".join(
+                f"- chunk_id={s['chunk_id']}, document_id={s['document_id']}"
+                for s in sources
+            )
+        else:
+            sources_block = "None"
 
         return f"""
 You are a factual question-answering assistant.
@@ -32,21 +36,24 @@ You are a factual question-answering assistant.
 Your task:
 - Answer the question using ONLY the information from the provided context.
 - Do NOT use any external knowledge.
-- If the answer cannot be derived from the context, respond exactly with: "I do not know."
+- If the answer cannot be derived from the context, respond exactly with:
+  "I do not know."
 
-Context (extracted document fragments):
+Context:
 {context}
 
-Sources (for grounding reference):
+Grounding sources (for reference only):
 {sources_block}
 
 Question:
 {question}
 
-Answer requirements:
-- Be concise and factual.
-- Do not speculate.
-- Do not add information not present in the context.
+Answer guidelines:
+- Provide a synthesized answer, not a quote.
+- Be concise, clear, and factual.
+- Do NOT copy sentences verbatim from the context.
+- Do NOT mention sources or metadata in the answer.
+- Do NOT speculate or add information not present in the context.
 
 Final Answer:
 """.strip()

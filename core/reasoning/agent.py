@@ -7,7 +7,11 @@ from .strategies import ReasoningStrategy
 class ReasoningAgent:
     """
     Агент reasoning.
-    Готує структурований payload для generation layer.
+
+    Відповідальність:
+    - підготувати структурований payload для generation layer
+    - НЕ виконувати retrieval
+    - НЕ змінювати чанки
     """
 
     def __init__(
@@ -17,24 +21,30 @@ class ReasoningAgent:
         self.strategy = strategy
         self.context_builder = ContextBuilder(strategy)
 
+    # ======================================================
+    # PUBLIC API
+    # ======================================================
+
     def prepare(
         self,
         question: str,
         chunks: List[Dict]
     ) -> Dict:
         """
-        Повертає reasoning payload з явним контрактом.
+        Формує reasoning payload з явним контрактом.
+
+        payload:
+        {
+            question: str
+            context: str
+            sources: List[{chunk_id, document_id}]
+            strategy: str
+        }
         """
 
         context = self.context_builder.build(chunks)
 
-        sources = [
-            {
-                "chunk_id": chunk["chunk_id"],
-                "document_id": chunk["document_id"]
-            }
-            for chunk in chunks
-        ]
+        sources = self._build_sources(chunks)
 
         return {
             "question": question,
@@ -42,3 +52,21 @@ class ReasoningAgent:
             "sources": sources,
             "strategy": self.strategy.value
         }
+
+    # ======================================================
+    # INTERNALS
+    # ======================================================
+
+    @staticmethod
+    def _build_sources(chunks: List[Dict]) -> List[Dict]:
+        """
+        Витягує мінімальний набір metadata для grounding.
+        """
+        return [
+            {
+                "chunk_id": chunk.get("chunk_id"),
+                "document_id": chunk.get("document_id")
+            }
+            for chunk in chunks
+            if chunk.get("chunk_id") and chunk.get("document_id")
+        ]
