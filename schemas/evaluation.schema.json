@@ -6,7 +6,7 @@
     "evaluation_id",
     "question",
     "answer",
-    "index_id",
+    "index_ids",
     "chunk_ids",
     "metrics",
     "created_at"
@@ -24,9 +24,10 @@
       "type": "string",
       "description": "Згенерована відповідь"
     },
-    "index_id": {
-      "type": "string",
-      "description": "ID індексу, використаного для retrieval"
+    "index_ids": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "ID індексів, використаних для retrieval (multi-index)"
     },
     "chunk_ids": {
       "type": "array",
@@ -35,7 +36,11 @@
     },
     "metrics": {
       "type": "object",
-      "required": ["relevance", "groundedness"],
+      "required": [
+        "relevance",
+        "groundedness",
+        "answerability"
+      ],
       "properties": {
         "relevance": {
           "type": "number",

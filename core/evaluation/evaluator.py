@@ -1,7 +1,7 @@
-from typing import Dict, List
+from typing import Dict
 from datetime import datetime
 import uuid
-
+from typing import List
 from .relevance import RelevanceEvaluator
 from .groundedness import GroundednessEvaluator
 from .answerability import AnswerabilityEvaluator
@@ -23,11 +23,11 @@ class Evaluator:
         self.answerability = AnswerabilityEvaluator()
 
     def evaluate(
-        self,
-        question: str,
-        answer: str,
-        chunks: List[Dict],
-        index_id: str
+            self,
+            question: str,
+            answer: str,
+            chunks: List[Dict],
+            index_ids: List[str]
     ) -> Dict:
         """
         Повертає evaluation result,
@@ -42,7 +42,7 @@ class Evaluator:
             "evaluation_id": str(uuid.uuid4()),
             "question": question,
             "answer": answer,
-            "index_id": index_id,
+            "index_ids": index_ids,
             "chunk_ids": [c["chunk_id"] for c in chunks],
             "metrics": {
                 "relevance": relevance_score,
