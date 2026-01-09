@@ -6,7 +6,6 @@ class CacheManager:
     """
     Керує життєвим циклом кешу.
     """
-
     def __init__(self, semantic_cache, ttl: int):
         self.cache = semantic_cache
         self.ttl = ttl
@@ -15,7 +14,6 @@ class CacheManager:
         """
         Видаляє протерміновані або невалідні записи.
         """
-
         now = time.time()
 
         self.cache._entries = [
