@@ -1,60 +1,71 @@
-from langchain_core.language_models.llms import LLM
-from langchain_community.llms import HuggingFacePipeline
+# core/generation/llm_client.py
+
 from transformers import pipeline
+from config.settings import settings
 
 
 class LLMClient:
     """
-    Універсальний LLM-клієнт.
+    Config-driven LLM client.
 
-    backend:
-      - "hf"      → HuggingFace (Colab / cloud)
-      - "ollama"  → Ollama (local only)
+    НЕ:
+    - не приймає model_name напряму
+    - не має hardcoded моделей
     """
 
-    def __init__(
-        self,
-        model_name: str,
-        temperature: float = 0.0,
-        max_tokens: int = 256,
-        backend: str = "hf"
-    ):
-        self.model_name = model_name
-        self.backend = backend
+    def __init__(self, mode: str):
+        """
+        mode: "local" | "colab"
+        """
+        cfg = settings.models["llm"].get(mode)
+        if not cfg:
+            raise ValueError(f"LLM config for mode '{mode}' not found")
 
-        # ---------------- OLLAMA (LOCAL) ----------------
-        if backend == "ollama":
-            from langchain_community.llms import Ollama
+        self.backend = cfg["backend"]
+        self.temperature = cfg.get("temperature", 0.0)
+        self.max_tokens = cfg.get("max_tokens", 256)
 
-            self.llm: LLM = Ollama(
-                model=model_name,
-                temperature=temperature,
-                num_predict=max_tokens
-            )
-
-        # ----------------
-        # HUGGINGFACE (COLAB) ----------------
-        elif backend == "hf":
-            # FLAN-T5 → text2text-generation, NOT text-generation
-            hf_pipeline = pipeline(
-                task="text2text-generation",
-                model="google/flan-t5-base",
-                max_new_tokens=max_tokens,
-                do_sample=False,          # ← заміна temperature=0
-                truncation=True
-            )
-
-            self.llm: LLM = HuggingFacePipeline(
-                pipeline=hf_pipeline
-            )
-
+        if self.backend == "hf":
+            self._init_hf(cfg)
+        elif self.backend == "ollama":
+            self._init_ollama(cfg)
         else:
-            raise ValueError(f"Unsupported LLM backend: {backend}")
+            raise ValueError(f"Unsupported LLM backend: {self.backend}")
 
+    # --------------------------------------------------
+    # BACKENDS
+    # --------------------------------------------------
+
+    def _init_hf(self, cfg: dict):
+        model_name = cfg["model"]
+
+        self.pipeline = pipeline(
+            task="text2text-generation",
+            model=model_name,
+            max_new_tokens=self.max_tokens,
+            do_sample=self.temperature > 0.0,
+            temperature=self.temperature if self.temperature > 0 else None,
+        )
+
+    def _init_ollama(self, cfg: dict):
+        # для локального dev (залишаємо як є, мінімально)
+        from langchain.llms import Ollama
+
+        self.llm = Ollama(
+            model=cfg["model"],
+            temperature=self.temperature
+        )
+
+    # --------------------------------------------------
+    # API
     # --------------------------------------------------
 
     def generate(self, prompt: str) -> str:
-        """
-        Єдина точка генерації.
-        """
-        return self.llm.invoke(prompt)
+        if self.backend == "hf":
+            out = self.pipeline(prompt)[0]["generated_text"]
+            return out.strip()
+
+        if self.backend == "ollama":
+            return self.llm(prompt)
+
+        raise RuntimeError("LLM backend not initialized")

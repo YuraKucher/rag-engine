@@ -1,35 +1,51 @@
+# core/indexing/embedder.py
+
 from typing import List
-from langchain_community.embeddings import HuggingFaceEmbeddings
+from sentence_transformers import SentenceTransformer
+
+from config.settings import settings
 
 
 class Embedder:
     """
-    Thin wrapper над embedding-моделлю.
+    Config-driven embedding engine.
 
-    Відповідає ТІЛЬКИ за:
-    - перетворення тексту → вектор
-    - гарантію стабільної embedding dimension
+    НЕ:
+    - не приймає model_name напряму
+    - не знає, де він запускається
+
+    ВСЕ береться з models.yaml
     """
 
-    def __init__(self, model_name: str):
-        self.model_name = model_name
-        self._embeddings = HuggingFaceEmbeddings(
-            model_name=model_name,
-            model_kwargs={"device": "cpu"},
-        )
+    def __init__(self):
+        cfg = settings.models["embeddings"]
 
-        # 🔒 Фіксуємо dimension один раз
-        test_vec = self._embeddings.embed_query("test")
-        self.dimension = len(test_vec)
+        backend = cfg.get("backend")
+        if backend != "sentence_transformers":
+            raise ValueError(f"Unsupported embedding backend: {backend}")
+
+        model_name = cfg["model"]
+        device = cfg.get("device", "cpu")
+        self.normalize = cfg.get("normalize", True)
+
+        self.model = SentenceTransformer(
+            model_name,
+            device=device
+        )
+    # --------------------------------------------------
+    # API
+    # --------------------------------------------------
 
     def embed(self, text: str) -> List[float]:
-        """
-        Single embedding (query, evaluation).
-        """
-        return self._embeddings.embed_query(text)
+        vec = self.model.encode(
+            text,
+            normalize_embeddings=self.normalize
+        )
+        return vec.tolist()
 
     def embed_batch(self, texts: List[str]) -> List[List[float]]:
-        """
-        Batch embedding (indexing).
-        """
-        return self._embeddings.embed_documents(texts)
+        vectors = self.model.encode(
+            texts,
+            normalize_embeddings=self.normalize
+        )
+        return [v.tolist() for v in vectors]

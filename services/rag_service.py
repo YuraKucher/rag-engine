@@ -68,8 +68,6 @@ class RAGService:
         chunks_path: str,
         indexes_path: str,
         state_path: str,
-        embedding_model: str,
-        llm_model: str,
     ):
         # ---------------- System registry ----------------
         self.system_registry = SystemRegistry(
@@ -88,7 +86,6 @@ class RAGService:
 
         # ---------------- Indexing ----------------
         self.index_manager = IndexManager(
-            embedding_model=embedding_model,
             indexes_path=indexes_path,
         )
 
@@ -127,10 +124,7 @@ class RAGService:
         )
 
         # ---------------- Generation ----------------
-        self.llm_client = LLMClient(
-            model_name=llm_model,
-            backend="hf",
-        )
+        self.llm_client = LLMClient(mode="colab")  # або "local"
 
         # ---------------- Evaluation ----------------
         self.evaluator = Evaluator(
@@ -170,7 +164,8 @@ class RAGService:
 
         for chunk in chunks:
             chunk.setdefault("metadata", {})
-            chunk["metadata"]["index_id"] = index_metadata["index_id"]
+            chunk["metadata"].setdefault("index_ids", [])
+            chunk["metadata"]["index_ids"].append(index_metadata["index_id"])
             chunk["metadata"]["embedding_model"] = index_metadata["embedding_model"]
             self.chunk_store.save(chunk)
 
