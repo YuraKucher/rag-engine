@@ -1,84 +1,99 @@
 """
-Learning Policies v1
-====================
+StatePolicyUpdater
+==================
 
-Rule-based learning policies.
+Єдиний policy engine для online learning (LTR).
 
-Відповідальність:
-- аналіз evaluation + feedback сигналів
-- формування рекомендацій щодо оновлення системи
+Відповідає за:
+- застосування evaluation (+ feedback) до state
 
 НЕ:
-- не застосовує зміни напряму
-- не викликає retrieval / generation
+- не змінює retrieval policy
+- не змінює конфіги
+- не приймає продуктових рішень
 """
 
-from typing import Dict, List, Optional
+from typing import Dict, Optional
+from core.learning.state_maneger import StateManager
 
 
-class LearningPolicyEngine:
+class StatePolicyUpdater:
     """
-    Rule-based engine для learning v1.
+    Apply learning signals to state.
     """
 
-    def __init__(self, thresholds: Optional[Dict] = None):
-        self.thresholds = thresholds or {
-            "relevance": 0.5,
-            "groundedness": 0.5,
-            "answerability": 0.4
-        }
+    def __init__(self, state_manager: StateManager):
+        self.state = state_manager
 
-    def evaluate_policies(
-        self,
-        evaluation_stats: Dict,
-        feedback_stats: Optional[Dict] = None
-    ) -> List[Dict]:
+    # --------------------------------------------------
+    # PUBLIC API
+    # --------------------------------------------------
+
+    def apply(self, evaluation: Dict, feedback: Optional[Dict] = None) -> None:
         """
-        Аналізує статистику і повертає список policy proposals.
+        ЄДИНА точка застосування learning.
         """
 
-        proposals: List[Dict] = []
+        # ---------------- Documents ----------------
+        for doc in evaluation.get("documents", []):
+            self.state.update_document(
+                doc_id=doc["document_id"],
+                relevance=doc["relevance"],
+                answerability=doc["answerability"],
+            )
 
-        # --------------------------------------------------
-        # Rule 1: Low groundedness → increase top_k
-        # --------------------------------------------------
-        if evaluation_stats.get("avg_groundedness", 1.0) < self.thresholds["groundedness"]:
-            proposals.append({
-                "policy": "retrieval.top_k",
-                "action": "increase",
-                "delta": 2,
-                "reason": "Low groundedness → insufficient context"
-            })
+        # ---------------- Chunks ----------------
+        for chunk in evaluation.get("chunks", []):
+            self.state.update_chunk(
+                chunk_id=chunk["chunk_id"],
+                relevance=chunk["relevance"],
+                groundedness=chunk["groundedness"],
+            )
 
-        # --------------------------------------------------
-        # Rule 2: Low relevance → enable reranker
-        # --------------------------------------------------
-        if evaluation_stats.get("avg_relevance", 1.0) < self.thresholds["relevance"]:
-            proposals.append({
-                "policy": "retrieval.reranker",
-                "action": "enable",
-                "reason": "Low relevance → poor chunk selection"
-            })
+        # ---------------- Indexes (MULTI-INDEX) ----------------
+        for index in evaluation.get("indexes", []):
+            self.state.update_index(
+                index_id=index["index_id"],
+                relevance=index["avg_relevance"],
+                groundedness=index["avg_groundedness"],
+                used_chunks=len(index.get("used_chunks", []))
+            )
 
-        # --------------------------------------------------
-        # Rule 3: Low answerability → query rewriting
-        # --------------------------------------------------
-        if evaluation_stats.get("avg_answerability", 1.0) < self.thresholds["answerability"]:
-            proposals.append({
-                "policy": "retrieval.query_rewrite",
-                "action": "enable",
-                "reason": "Low answerability → complex or underspecified queries"
-            })
+        # ---------------- Optional human feedback ----------------
+        if feedback:
+            self._apply_human_signal(feedback)
 
-        # --------------------------------------------------
-        # Rule 4: Conflict detection (evaluation vs feedback)
-        # --------------------------------------------------
-        if feedback_stats:
-            if feedback_stats.get("conflict_rate", 0.0) > 0.3:
-                proposals.append({
-                    "policy": "analysis",
-                    "action": "flag",
-                    "reason": "High conflict between evaluation and user feedback"
-                })
+        # 🔒 ЄДИНЕ місце save
+        self.state.save_all()
 
-        return proposals
+    # --------------------------------------------------
+    # INTERNALS
+    # --------------------------------------------------
+
+    def _apply_human_signal(self, feedback: Dict) -> None:
+        """
+        Людський сигнал — слабкий, глобальний, стабілізуючий.
+        """
+
+        rating = feedback.get("rating")
+        if rating is None:
+            return
+
+        # ❗ людський фідбек НЕ повинен ламати структуру state
+        # лише мʼяка корекція ваг
+
+        if rating < 0:
+            decay = 0.98
+        elif rating > 0:
+            decay = 1.02
+        else:
+            return
+
+        for doc in self.state.document_state.values():
+            doc["weight"] *= decay
+
+        for chunk in self.state.chunk_state.values():
+            chunk["weight"] *= decay
+
+        for index in self.state.index_state.values():
+            index["prior"] *= decay

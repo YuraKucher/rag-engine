@@ -1,2 +1,4 @@
-from .base_chunker import BaseChunker
-from .text_chunker import TextChunker
+from .chunker import Chunker
+__all__ = [
+    Chunker
+           ]

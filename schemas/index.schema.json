@@ -4,45 +4,43 @@
   "type": "object",
   "required": [
     "index_id",
-    "index_type",
     "embedding_model",
     "index_path",
-    "chunk_ids",
-    "document_ids",
     "created_at"
   ],
   "properties": {
     "index_id": {
       "type": "string",
-      "description": "Унікальний ідентифікатор індексу"
-    },
-    "index_type": {
-      "type": "string",
-      "description": "Тип індексу (faiss, інший)"
+      "description": "Unique index identifier"
     },
     "embedding_model": {
       "type": "string",
-      "description": "Назва embedding-моделі"
+      "description": "Embedding model used to build the index"
     },
     "index_path": {
       "type": "string",
-      "description": "Фізичний шлях до файлу індексу (FAISS)"
+      "description": "Filesystem path to the index"
     },
-    "chunk_ids": {
-      "type": "array",
-      "items": { "type": "string" },
-      "description": "Список ID чанків, що входять до індексу"
+
+    "index_role": {
+      "type": "string",
+      "enum": ["general", "definition", "procedure", "qa", "custom"],
+      "description": "Semantic role of the index"
     },
-    "document_ids": {
-      "type": "array",
-      "items": { "type": "string" },
-      "description": "Список ID документів, представлених в індексі"
+    "index_scope": {
+      "type": "string",
+      "enum": ["global", "document", "collection"],
+      "description": "Scope of indexed content"
     },
+    "created_from": {
+      "type": "string",
+      "description": "Pipeline or reason that created the index"
+    },
+
     "created_at": {
       "type": "string",
-      "format": "date-time",
-      "description": "Час створення індексу"
+      "format": "date-time"
     }
   },
-  "additionalProperties": false
+  "additionalProperties": true
 }

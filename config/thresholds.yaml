@@ -1,3 +1,14 @@
-cache:
-  similarity_threshold: 0.92
-  ttl: 86400
+evaluation:
+  relevance:
+    min: 0.0
+    max: 1.0
+  groundedness:
+    min: 0.0
+    max: 1.0
+  answerability:
+    min: 0.0
+    max: 1.0
+
+feedback:
+  negative_decay: 0.98
+  positive_boost: 1.02

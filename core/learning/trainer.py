@@ -2,20 +2,25 @@
 Trainer
 =======
 
+Offline analytics helper.
+
 Агрегує evaluation та feedback дані
-і запускає learning policies.
+для аналізу якості роботи системи.
+
+НЕ:
+- не оновлює state
+- не застосовує learning
+- не впливає на retrieval / rerank
 """
 
 import os
 import json
 from typing import Dict, List
 
-from core.learning.policies_update import LearningPolicyEngine
-
 
 class Trainer:
     """
-    Learning orchestrator (v1).
+    Offline evaluation analyzer.
     """
 
     def __init__(
@@ -25,17 +30,23 @@ class Trainer:
     ):
         self.evaluation_path = evaluation_path
         self.feedback_path = feedback_path
-        self.policy_engine = LearningPolicyEngine()
 
     # --------------------------------------------------
     # DATA LOADING
     # --------------------------------------------------
 
     def _load_evaluations(self) -> List[Dict]:
+        if not os.path.exists(self.evaluation_path):
+            return []
+
         records = []
         for fname in os.listdir(self.evaluation_path):
             if fname.endswith(".json"):
-                with open(os.path.join(self.evaluation_path, fname), "r", encoding="utf-8") as f:
+                with open(
+                    os.path.join(self.evaluation_path, fname),
+                    "r",
+                    encoding="utf-8"
+                ) as f:
                     records.append(json.load(f))
         return records
 
@@ -46,70 +57,85 @@ class Trainer:
         records = []
         for fname in os.listdir(self.feedback_path):
             if fname.endswith(".json"):
-                with open(os.path.join(self.feedback_path, fname), "r", encoding="utf-8") as f:
+                with open(
+                    os.path.join(self.feedback_path, fname),
+                    "r",
+                    encoding="utf-8"
+                ) as f:
                     records.append(json.load(f))
         return records
 
     # --------------------------------------------------
-    # STATISTICS
+    # AGGREGATION
     # --------------------------------------------------
 
-    def _aggregate_evaluation_stats(self, evaluations: List[Dict]) -> Dict:
-        if not evaluations:
-            return {}
-
-        relevance = []
-        groundedness = []
-        answerability = []
+    def _aggregate_index_stats(self, evaluations: List[Dict]) -> Dict:
+        stats: Dict[str, Dict] = {}
 
         for e in evaluations:
-            metrics = e.get("metrics", {})
-            if "relevance" in metrics:
-                relevance.append(metrics["relevance"])
-            if "groundedness" in metrics:
-                groundedness.append(metrics["groundedness"])
-            if "answerability" in metrics:
-                answerability.append(metrics["answerability"])
+            for idx in e.get("indexes", []):
+                index_id = idx["index_id"]
+                s = stats.setdefault(
+                    index_id,
+                    {
+                        "count": 0,
+                        "avg_relevance": 0.0,
+                        "avg_groundedness": 0.0,
+                    }
+                )
 
-        return {
-            "avg_relevance": sum(relevance) / len(relevance) if relevance else 1.0,
-            "avg_groundedness": sum(groundedness) / len(groundedness) if groundedness else 1.0,
-            "avg_answerability": sum(answerability) / len(answerability) if answerability else 1.0
-        }
+                s["count"] += 1
+                s["avg_relevance"] += idx["avg_relevance"]
+                s["avg_groundedness"] += idx["avg_groundedness"]
 
-    def _aggregate_feedback_stats(self, feedback: List[Dict]) -> Dict:
-        if not feedback:
-            return {}
+        for s in stats.values():
+            if s["count"] > 0:
+                s["avg_relevance"] /= s["count"]
+                s["avg_groundedness"] /= s["count"]
 
-        conflicts = 0
-        total = len(feedback)
+        return stats
 
-        for f in feedback:
-            if f.get("rating") == -1:
-                conflicts += 1
+    def _aggregate_document_stats(self, evaluations: List[Dict]) -> Dict:
+        stats: Dict[str, Dict] = {}
 
-        return {
-            "conflict_rate": conflicts / total if total else 0.0
-        }
+        for e in evaluations:
+            for doc in e.get("documents", []):
+                doc_id = doc["document_id"]
+                s = stats.setdefault(
+                    doc_id,
+                    {
+                        "count": 0,
+                        "avg_relevance": 0.0,
+                        "avg_answerability": 0.0,
+                    }
+                )
+
+                s["count"] += 1
+                s["avg_relevance"] += doc["relevance"]
+                s["avg_answerability"] += doc["answerability"]
+
+        for s in stats.values():
+            if s["count"] > 0:
+                s["avg_relevance"] /= s["count"]
+                s["avg_answerability"] /= s["count"]
+
+        return stats
 
     # --------------------------------------------------
     # PUBLIC API
     # --------------------------------------------------
 
-    def run_learning(self) -> List[Dict]:
+    def run_analysis(self) -> Dict:
         """
-        Запускає learning cycle і повертає policy proposals.
+        Повертає агреговану статистику для дебагу / UI.
         """
 
         evaluations = self._load_evaluations()
         feedback = self._load_feedback()
 
-        evaluation_stats = self._aggregate_evaluation_stats(evaluations)
-        feedback_stats = self._aggregate_feedback_stats(feedback)
-
-        proposals = self.policy_engine.evaluate_policies(
-            evaluation_stats=evaluation_stats,
-            feedback_stats=feedback_stats
-        )
-
-        return proposals
+        return {
+            "evaluations_count": len(evaluations),
+            "feedback_count": len(feedback),
+            "index_stats": self._aggregate_index_stats(evaluations),
+            "document_stats": self._aggregate_document_stats(evaluations),
+        }

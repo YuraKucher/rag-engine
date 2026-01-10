@@ -1,7 +1,16 @@
-paths:
+data:
   documents: data/documents
   chunks: data/chunks
   indexes: data/indexes
-  evaluations: data/evaluations
-  feedback: data/feedback
-  logs: data/logs
+
+state:
+  base: data/state
+  documents: data/state/document_state.json
+  chunks: data/state/chunk_state.json
+  indexes: data/state/index_state.json
+
+feedback:
+  base: data/feedback
+
+evaluations:
+  base: data/evaluations

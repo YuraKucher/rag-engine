@@ -1,27 +1,27 @@
-from typing import List, Dict, Optional
-from datetime import datetime
-import uuid
 import json
+import uuid
 from pathlib import Path
+from typing import Dict, List
+from datetime import datetime
 
-from .embedder import Embedder
-from .faiss_index import FaissIndex
+from core.indexing.embedder import Embedder
+from core.indexing.faiss_index import FaissIndex
 
 
 class IndexManager:
     """
-    Керує FAISS-індексом.
+    Керує множиною FAISS-індексів.
 
     Відповідальність:
-    - build index
-    - save index + metadata
-    - load index (з metadata)
+    - build index (+ metadata)
+    - load index
     - query index
+    - index discovery (role → index_id)
 
     НЕ:
-    - cache
-    - orchestration
-    - policy
+    - routing
+    - ranking
+    - learning
     """
 
     def __init__(self, embedding_model: str, indexes_path: str):
@@ -31,100 +31,124 @@ class IndexManager:
         self.indexes_path = Path(indexes_path)
         self.indexes_path.mkdir(parents=True, exist_ok=True)
 
-        self.faiss_index: Optional[FaissIndex] = None
-        self.chunk_ids: List[str] = []
-        self.document_ids: List[str] = []
+        # loaded indexes
+        self._indexes: Dict[str, FaissIndex] = {}
 
-        self.index_id: Optional[str] = None
-        self.index_path: Optional[Path] = None
-        self.metadata_path: Optional[Path] = None
+        # metadata cache
+        self._metadata: Dict[str, Dict] = {}
 
-    # ------------------------------------------------------------------
-    # BUILD + SAVE
-    # ------------------------------------------------------------------
+        # load metadata on startup
+        self._load_all_metadata()
 
-    def build_index(self, chunks: List[Dict]) -> Dict:
+    # --------------------------------------------------
+    # METADATA DISCOVERY
+    # --------------------------------------------------
+
+    def _load_all_metadata(self) -> None:
+        """
+        Читає всі *.index.json з диску.
+        """
+        for meta_path in self.indexes_path.glob("*.index.json"):
+            with open(meta_path, "r", encoding="utf-8") as f:
+                meta = json.load(f)
+                self._metadata[meta["index_id"]] = meta
+
+    # --------------------------------------------------
+    # BUILD
+    # --------------------------------------------------
+
+    def build_index(
+        self,
+        chunks: List[Dict],
+        index_role: str = "general"
+    ) -> Dict:
         texts = [chunk["content"] for chunk in chunks]
-        self.chunk_ids = [chunk["chunk_id"] for chunk in chunks]
-        self.document_ids = sorted(
-            {chunk["document_id"] for chunk in chunks}
-        )
+        chunk_ids = [chunk["chunk_id"] for chunk in chunks]
+        document_ids = sorted({chunk["document_id"] for chunk in chunks})
 
-        embeddings = self.embedder.embed_texts(texts)
+        embeddings = self.embedder.embed_batch(texts)
         dimension = len(embeddings[0])
 
-        self.faiss_index = FaissIndex(dimension)
-        self.faiss_index.add(embeddings)
+        faiss_index = FaissIndex(dimension)
+        faiss_index.add(embeddings)
 
-        self.index_id = str(uuid.uuid4())
-        self.index_path = self.indexes_path / f"{self.index_id}.faiss"
-        self.metadata_path = self.indexes_path / f"{self.index_id}.index.json"
+        index_id = str(uuid.uuid4())
+        index_path = self.indexes_path / f"{index_id}.faiss"
+        metadata_path = self.indexes_path / f"{index_id}.index.json"
 
-        self.faiss_index.save(str(self.index_path))
+        faiss_index.save(str(index_path))
 
         metadata = {
-            "index_id": self.index_id,
+            "index_id": index_id,
             "index_type": "faiss",
+            "index_role": index_role,
             "embedding_model": self.embedding_model,
-            "index_path": str(self.index_path),
-            "chunk_ids": self.chunk_ids,
-            "document_ids": self.document_ids,
-            "created_at": datetime.utcnow().isoformat()
+            "index_path": str(index_path),
+            "chunk_ids": chunk_ids,
+            "document_ids": document_ids,
+            "created_at": datetime.utcnow().isoformat() + "Z"
         }
 
-        with open(self.metadata_path, "w", encoding="utf-8") as f:
+        with open(metadata_path, "w", encoding="utf-8") as f:
             json.dump(metadata, f, ensure_ascii=False, indent=2)
+
+        self._metadata[index_id] = metadata
+        self._indexes[index_id] = faiss_index
 
         return metadata
 
-    # ------------------------------------------------------------------
-    # LOAD (З METADATA)
-    # ------------------------------------------------------------------
+    # --------------------------------------------------
+    # LOAD
+    # --------------------------------------------------
 
     def load_index(self, index_id: str) -> None:
-        faiss_path = self.indexes_path / f"{index_id}.faiss"
-        metadata_path = self.indexes_path / f"{index_id}.index.json"
+        if index_id in self._indexes:
+            return
 
-        if not faiss_path.exists():
-            raise FileNotFoundError(f"FAISS index not found: {faiss_path}")
+        meta = self._metadata.get(index_id)
+        if not meta:
+            raise KeyError(f"Index metadata not found: {index_id}")
 
-        if not metadata_path.exists():
-            raise FileNotFoundError(f"Index metadata not found: {metadata_path}")
+        faiss_index = FaissIndex.load(meta["index_path"])
+        self._indexes[index_id] = faiss_index
 
-        with open(metadata_path, "r", encoding="utf-8") as f:
-            metadata = json.load(f)
-
-        self.faiss_index = FaissIndex.load(str(faiss_path))
-        self.chunk_ids = metadata["chunk_ids"]
-        self.document_ids = metadata["document_ids"]
-
-        self.index_id = metadata["index_id"]
-        self.index_path = faiss_path
-        self.metadata_path = metadata_path
-
-    # ------------------------------------------------------------------
+    # --------------------------------------------------
     # QUERY
-    # ------------------------------------------------------------------
+    # --------------------------------------------------
 
-    def query(self, query: str, k: int) -> List[str]:
-        if self.faiss_index is None:
-            raise RuntimeError(
-                "Index not loaded. "
-                "Call load_index() before query()."
-            )
+    def query(self, query: str, k: int, index_id: str) -> List[str]:
+        self.load_index(index_id)
 
-        query_vector = self.embedder.embed_text(query)
-        indices, _ = self.faiss_index.search(query_vector, k)
+        faiss_index = self._indexes[index_id]
+        meta = self._metadata[index_id]
+
+        query_vector = self.embedder.embed(query)
+        indices, _ = faiss_index.search(query_vector, k)
+
+        chunk_ids = meta.get("chunk_ids", [])
 
         return [
-            self.chunk_ids[i]
+            chunk_ids[i]
             for i in indices
-            if i < len(self.chunk_ids)
+            if i < len(chunk_ids)
         ]
 
-    # ---- буде реалізовано потім -------
+    # --------------------------------------------------
+    # DISCOVERY API (NEW)
+    # --------------------------------------------------
+
     def list_indexes(self) -> List[str]:
+        """
+        Повертає всі index_id (UUID).
+        """
+        return list(self._metadata.keys())
+
+    def get_indexes_by_role(self, role: str) -> List[str]:
+        """
+        Повертає всі index_id з заданою semantic role.
+        """
         return [
-            p.stem.replace(".index", "")
-            for p in self.indexes_path.glob("*.index.json")
+            index_id
+            for index_id, meta in self._metadata.items()
+            if meta.get("index_role") == role
         ]

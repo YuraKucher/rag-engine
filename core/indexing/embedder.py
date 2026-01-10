@@ -3,28 +3,33 @@ from langchain_community.embeddings import HuggingFaceEmbeddings
 
 
 class Embedder:
+    """
+    Thin wrapper над embedding-моделлю.
+
+    Відповідає ТІЛЬКИ за:
+    - перетворення тексту → вектор
+    - гарантію стабільної embedding dimension
+    """
+
     def __init__(self, model_name: str):
         self.model_name = model_name
         self._embeddings = HuggingFaceEmbeddings(
             model_name=model_name,
-            model_kwargs={"device": "cpu"}
+            model_kwargs={"device": "cpu"},
         )
 
-    def embed_batch(self, texts: List[str]):
-        """
-        Batch embedding (індексація, cache warmup).
-        """
-        return self._embeddings.embed_documents(texts)
+        # 🔒 Фіксуємо dimension один раз
+        test_vec = self._embeddings.embed_query("test")
+        self.dimension = len(test_vec)
 
-    def embed(self, text: str):
+    def embed(self, text: str) -> List[float]:
         """
-        Single embedding (query, evaluation, cache).
+        Single embedding (query, evaluation).
         """
         return self._embeddings.embed_query(text)
 
-    # --- Backward compatibility ---
-    def embed_texts(self, texts: List[str]):
-        return self.embed_batch(texts)
-
-    def embed_text(self, text: str):
-        return self.embed(text)
+    def embed_batch(self, texts: List[str]) -> List[List[float]]:
+        """
+        Batch embedding (indexing).
+        """
+        return self._embeddings.embed_documents(texts)

@@ -1,4 +1,7 @@
-generation:
-  max_context_chars: 2000
-  max_chunks: 3
-  truncate_strategy: tail
+llm:
+  temperature: 0.2
+  max_tokens: 512
+
+prompts:
+  strategy: qa
+  enforce_grounding: true

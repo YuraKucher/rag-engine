@@ -23,6 +23,11 @@ class ChunkStore:
         Зберігає чанк як окремий JSON-файл.
         """
         chunk_id = chunk["chunk_id"]
+
+        # 🔒 гарантуємо мультиіндексну metadata
+        chunk.setdefault("metadata", {})
+        chunk["metadata"].setdefault("index_ids", [])
+
         path = os.path.join(self.base_path, f"{chunk_id}.json")
 
         with open(path, "w", encoding="utf-8") as f:
@@ -37,7 +42,13 @@ class ChunkStore:
             return None
 
         with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
+            chunk = json.load(f)
+
+        # 🔒 backward compatibility
+        chunk.setdefault("metadata", {})
+        chunk["metadata"].setdefault("index_ids", [])
+
+        return chunk
 
     # --------------------------------------------------
     # QUERY HELPERS (OFFLINE / ORCHESTRATION)
@@ -63,10 +74,10 @@ class ChunkStore:
 
     def get_chunks_by_index(self, index_id: str) -> List[Dict]:
         """
-        Повертає всі чанки, що належать до індексу.
+        Повертає всі чанки, що належать до індексу (MULTI-INDEX SAFE).
         """
         return self._filter_chunks(
-            lambda c: c.get("metadata", {}).get("index_id") == index_id
+            lambda c: index_id in c.get("metadata", {}).get("index_ids", [])
         )
 
     # --------------------------------------------------
@@ -86,7 +97,12 @@ class ChunkStore:
             path = os.path.join(self.base_path, filename)
             with open(path, "r", encoding="utf-8") as f:
                 chunk = json.load(f)
-                if predicate(chunk):
-                    results.append(chunk)
+
+            # 🔒 backward compatibility
+            chunk.setdefault("metadata", {})
+            chunk["metadata"].setdefault("index_ids", [])
+
+            if predicate(chunk):
+                results.append(chunk)
 
         return results

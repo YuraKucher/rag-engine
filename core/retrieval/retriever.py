@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Dict
 
 from core.indexing.index_manager import IndexManager
 from .policies import RetrievalPolicy
@@ -7,16 +7,16 @@ from .query_rewriter import QueryRewriter
 
 class Retriever:
     """
-    Відповідає за semantic retrieval.
+    Semantic retriever (recall stage).
 
     Відповідальність:
-    - підготувати query (rewrite / normalize)
-    - викликати index_manager
-    - повернути candidate chunk_ids (recall stage)
+    - підготувати запит
+    - вибрати релевантні індекси (через IndexManager)
+    - виконати recall (chunk_ids)
 
     НЕ:
     - не ранжує
-    - не фільтрує
+    - не працює зі state
     - не знає про чанки як обʼєкти
     """
 
@@ -30,34 +30,75 @@ class Retriever:
         self.policy = policy
         self.query_rewriter = query_rewriter or QueryRewriter()
 
-    # ======================================================
+    # --------------------------------------------------
     # PUBLIC API
-    # ======================================================
+    # --------------------------------------------------
 
-    def retrieve(self, query: str) -> List[str]:
+    def retrieve(
+        self,
+        query: str,
+        index_roles: Optional[List[Dict]] = None
+    ) -> List[str]:
         """
-        Повертає список chunk_ids (recall stage).
-        """
+        Повертає список candidate chunk_ids.
 
+        index_roles:
+        [
+          {"index_role": "definition", "router_score": 1.0},
+          {"index_role": "general", "router_score": 0.5}
+        ]
+        """
         effective_query = self._prepare_query(query)
 
-        return self.index_manager.query(
-            query=effective_query,
-            k=self.policy.top_k
-        )
+        # 1️⃣ Визначаємо index_ids для пошуку
+        index_ids = self._resolve_index_ids(index_roles)
 
-    # ======================================================
+        # 2️⃣ Recall по кожному індексу
+        all_chunk_ids: List[str] = []
+
+        for index_id in index_ids:
+            chunk_ids = self.index_manager.query(
+                query=effective_query,
+                k=self.policy.top_k,
+                index_id=index_id
+            )
+            all_chunk_ids.extend(chunk_ids)
+
+        return all_chunk_ids
+
+    # --------------------------------------------------
     # INTERNALS
-    # ======================================================
+    # --------------------------------------------------
+
+    def _resolve_index_ids(
+        self,
+        index_roles: Optional[List[Dict]]
+    ) -> List[str]:
+        """
+        Перетворює roles → concrete index_ids.
+        """
+
+        # fallback: всі індекси
+        if not index_roles:
+            return self.index_manager.list_indexes()
+
+        resolved: List[str] = []
+
+        for role in index_roles:
+            role_name = role.get("index_role")
+            if not role_name:
+                continue
+
+            ids = self.index_manager.get_indexes_by_role(role_name)
+            resolved.extend(ids)
+
+        # дедуплікація
+        return list(dict.fromkeys(resolved))
 
     def _prepare_query(self, query: str) -> str:
         """
-        Готує запит до retrieval:
-        - rewrite (опційно)
-        - normalization (на майбутнє)
+        Готує запит до retrieval.
         """
-
         if self.policy.use_query_rewrite:
             return self.query_rewriter.rewrite(query)
-
-        return query
+        return query.strip()

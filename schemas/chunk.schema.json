@@ -5,62 +5,43 @@
   "required": [
     "chunk_id",
     "document_id",
-    "content",
-    "position",
-    "created_at"
+    "content"
   ],
   "properties": {
     "chunk_id": {
       "type": "string",
-      "description": "Унікальний ідентифікатор чанка"
+      "description": "Unique chunk identifier"
     },
     "document_id": {
       "type": "string",
-      "description": "ID документа, з якого походить чанк"
+      "description": "Parent document identifier"
     },
     "content": {
       "type": "string",
-      "description": "Текст чанка"
-    },
-    "position": {
-      "type": "object",
-      "description": "Позиція чанка в документі",
-      "required": ["start", "end"],
-      "properties": {
-        "start": {
-          "type": "integer",
-          "minimum": 0
-        },
-        "end": {
-          "type": "integer",
-          "minimum": 0
-        }
-      }
-    },
-    "embedding_id": {
-      "type": "string",
-      "description": "ID embedding-вектора для чанка",
-      "nullable": true
-    },
-    "content_hash": {
-      "type": "string",
-      "description": "Хеш контенту чанка для дедуплікації",
-      "nullable": true
+      "description": "Chunk text content"
     },
     "metadata": {
       "type": "object",
-      "description": "Довільні метадані чанка",
       "properties": {
-        "page": { "type": "integer" },
-        "section": { "type": "string" }
+        "index_id": {
+          "type": "string",
+          "description": "Primary index id (backward compatible)"
+        },
+        "index_ids": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "All indexes this chunk belongs to"
+        },
+        "position": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "source": {
+          "type": "string"
+        }
       },
       "additionalProperties": true
-    },
-    "created_at": {
-      "type": "string",
-      "format": "date-time",
-      "description": "Час створення чанка"
     }
   },
-  "additionalProperties": false
+  "additionalProperties": true
 }

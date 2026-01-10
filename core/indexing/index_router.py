@@ -1,77 +1,73 @@
-from typing import List, Dict
-import numpy as np
+"""
+IndexRouter
+===========
+
+Semantic router for index selection.
+
+Відповідає за:
+- аналіз типу питання
+- вибір semantic roles індексів
+
+НЕ:
+- не знає реальних index_id
+- не лоадить індекси
+- не приймає рішень про retrieval
+"""
+
+import re
+from typing import Dict, List
 
 
 class SemanticIndexRouter:
     """
-    Semantic router між індексами.
-
-    Визначає, які індекси релевантні запиту
-    ДО запуску FAISS retrieval.
+    Lightweight semantic router.
     """
 
-    def __init__(
-        self,
-        embedder,
-        index_registry,
-        similarity_threshold: float = 0.35,
-        top_k: int = 3
-    ):
-        self.embedder = embedder
-        self.index_registry = index_registry
-        self.similarity_threshold = similarity_threshold
-        self.top_k = top_k
-
-    # -----------------------------------------------------
-
-    def route(self, query: str) -> List[Dict]:
-        """
-        Повертає metadata індексів,
-        які семантично релевантні запиту.
-        """
-
-        query_emb = np.array(self.embedder.embed(query))
-
-        scored_indexes = []
-
-        for meta in self.index_registry.list_indexes():
-            rep_text = self._representative_text(meta)
-            if not rep_text:
-                continue
-
-            index_emb = np.array(self.embedder.embed(rep_text))
-
-            score = self._cosine_similarity(query_emb, index_emb)
-
-            if score >= self.similarity_threshold:
-                scored_indexes.append((score, meta))
-
-        scored_indexes.sort(key=lambda x: x[0], reverse=True)
-
-        return [meta for _, meta in scored_indexes[: self.top_k]]
-
-    # -----------------------------------------------------
-
-    @staticmethod
-    def _cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
-        return float(
-            np.dot(a, b) /
-            (np.linalg.norm(a) * np.linalg.norm(b))
+    def __init__(self):
+        self._definition_patterns = re.compile(
+            r"^(what is|who is|define)\b",
+            re.IGNORECASE
         )
 
+        self._procedure_patterns = re.compile(
+            r"\b(how to|steps?|install|configure|setup)\b",
+            re.IGNORECASE
+        )
+
+    # --------------------------------------------------
+    # PUBLIC API
+    # --------------------------------------------------
+
+    def route(self, question: str) -> List[Dict]:
+        """
+        Повертає список semantic roles індексів
+        у порядку пріоритету.
+        """
+
+        roles: List[Dict] = []
+
+        q = question.strip()
+
+        # --------- definition ---------
+        if self._definition_patterns.search(q):
+            roles.append(self._role("definition", score=1.0))
+
+        # --------- procedure ---------
+        if self._procedure_patterns.search(q):
+            roles.append(self._role("procedure", score=0.9))
+
+        # --------- fallback ---------
+        roles.append(self._role("general", score=0.5))
+
+        return roles
+
+    # --------------------------------------------------
+    # INTERNALS
+    # --------------------------------------------------
+
     @staticmethod
-    def _representative_text(index_meta: Dict) -> str:
-        """
-        Представницький текст індексу.
-        Мінімальна, але стабільна евристика.
-        """
-
-        # 1️⃣ Якщо буде summary — беремо його
-        if "summary" in index_meta:
-            return index_meta["summary"]
-
-        # 2️⃣ fallback: назва документа або index_id
-        if index_meta.get("document_ids"):
-            return " ".join(index_meta["document_ids"])
-
-        return index_meta.get("index_id", "")
+    def _role(role: str, score: float) -> Dict:
+        return {
+            "index_role": role,
+            "router_score": score
+        }

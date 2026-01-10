@@ -1,4 +1,15 @@
-system:
-  environment: colab        # local | colab | prod
-  max_context_chars: 4000   # жорсткий ліміт контексту
-  debug: true
+rag:
+  mode: production
+  enable_feedback_loop: true
+  enable_online_learning: true
+
+context:
+  max_context_chars: 4000
+
+retrieval:
+  multi_index: true
+  per_index_top_k: 10
+
+rerank:
+  top_k: 5
+  use_state_weights: true

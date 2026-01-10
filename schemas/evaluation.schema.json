@@ -1,70 +1,84 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "EvaluationResult",
+  "title": "Evaluation",
   "type": "object",
   "required": [
     "evaluation_id",
     "question",
     "answer",
-    "index_ids",
-    "chunk_ids",
-    "metrics",
     "created_at"
   ],
   "properties": {
     "evaluation_id": {
       "type": "string",
-      "description": "Унікальний ідентифікатор оцінки"
+      "description": "Unique evaluation identifier"
     },
     "question": {
-      "type": "string",
-      "description": "Користувацьке питання"
+      "type": "string"
     },
     "answer": {
-      "type": "string",
-      "description": "Згенерована відповідь"
+      "type": "string"
     },
-    "index_ids": {
+
+    "indexes": {
       "type": "array",
-      "items": { "type": "string" },
-      "description": "ID індексів, використаних для retrieval (multi-index)"
+      "description": "Per-index evaluation signals",
+      "items": {
+        "type": "object",
+        "required": ["index_id"],
+        "properties": {
+          "index_id": {
+            "type": "string"
+          },
+          "used_chunks": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "avg_relevance": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "avg_groundedness": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        },
+        "additionalProperties": true
+      }
     },
-    "chunk_ids": {
+
+    "documents": {
       "type": "array",
-      "items": { "type": "string" },
-      "description": "ID чанків, що були використані для відповіді"
-    },
-    "metrics": {
-      "type": "object",
-      "required": [
-        "relevance",
-        "groundedness",
-        "answerability"
-      ],
-      "properties": {
-        "relevance": {
-          "type": "number",
-          "minimum": 0,
-          "maximum": 1
+      "items": {
+        "type": "object",
+        "properties": {
+          "document_id": { "type": "string" },
+          "relevance": { "type": "number" },
+          "answerability": { "type": "number" }
         },
-        "groundedness": {
-          "type": "number",
-          "minimum": 0,
-          "maximum": 1
-        },
-        "answerability": {
-          "type": "number",
-          "minimum": 0,
-          "maximum": 1
-        }
-      },
-      "additionalProperties": false
+        "additionalProperties": true
+      }
     },
+
+    "chunks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "chunk_id": { "type": "string" },
+          "relevance": { "type": "number" },
+          "groundedness": { "type": "number" }
+        },
+        "additionalProperties": true
+      }
+    },
+
     "created_at": {
       "type": "string",
-      "format": "date-time",
-      "description": "Час проведення оцінки"
+      "format": "date-time"
     }
   },
-  "additionalProperties": false
+  "additionalProperties": true
 }
